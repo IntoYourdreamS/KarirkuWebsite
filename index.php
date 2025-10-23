@@ -421,8 +421,8 @@ if (isset($_GET['logout'])) {
                                 <span class="flaticon-search"></span>
                             </div>
                             <div class="process-cap">
-                                <h5>1. Search a job</h5>
-                                <p>Sorem spsum dolor sit amsectetur adipisclit, seddo eiusmod tempor incididunt ut laborea.</p>
+                                <h5>1. Cari Lokermu</h5>
+                                <p>Temukan lowongan pekerjaan yang sesuai dengan minat dan keahlian yang kamu inginkan. Gunakan fitur pencarian untuk mempermudah menemukan peluang terbaik untukmu.</p>
                             </div>
                         </div>
                     </div>
@@ -432,8 +432,8 @@ if (isset($_GET['logout'])) {
                                 <span class="flaticon-curriculum-vitae"></span>
                             </div>
                             <div class="process-cap">
-                                <h5>2. Apply for job</h5>
-                                <p>Sorem spsum dolor sit amsectetur adipisclit, seddo eiusmod tempor incididunt ut laborea.</p>
+                                <h5>2. Apply Lokernya</h5>
+                                <p>Kirimkan lamaranmu dengan mudah hanya dengan beberapa klik. Lengkapi profil dan unggah CV agar perusahaan dapat mengenalmu lebih baik.</p>
                             </div>
                         </div>
                     </div>
@@ -443,8 +443,8 @@ if (isset($_GET['logout'])) {
                                 <span class="flaticon-tour"></span>
                             </div>
                             <div class="process-cap">
-                                <h5>3. Get your job</h5>
-                                <p>Sorem spsum dolor sit amsectetur adipisclit, seddo eiusmod tempor incididunt ut laborea.</p>
+                                <h5>3. Mulailah bekerja</h5>
+                                <p>Setelah proses seleksi selesai dan kamu diterima, saatnya memulai karier barumu! Dapatkan pengalaman kerja berharga dan wujudkan impian profesionalmu.</p>
                             </div>
                         </div>
                     </div>

@@ -1,0 +1,1 @@
+{"version":2,"defects":{"LoginTest::testLoginSuccess":8,"LoginTest::testLoginFailWrongPassword":8,"LoginTest::testLoginFailUserNotFound":8},"times":{"LoginTest::testLoginSuccess":0.074,"LoginTest::testLoginFailWrongPassword":0.067,"LoginTest::testLoginFailUserNotFound":0}}
