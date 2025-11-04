@@ -6,4 +6,5 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
+    '' => array($vendorDir . '/supabase/functions-php/src', $vendorDir . '/supabase/postgrest-php/src', $vendorDir . '/supabase/storage-php/src', $vendorDir . '/supabase/supabase-php/src'),
 );
