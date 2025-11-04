@@ -5,7 +5,6 @@ session_start();
 $isLoggedIn = isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true;
 $userName = $_SESSION['user_name'] ?? '';
 
-// Fungsi untuk mendapatkan daftar lokasi unik dari database
 function getDaftarLokasi()
 {
     global $client;
