@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $error = 'Password salah!';
 
-                // DEBUG: Tampilkan info password jika needed
+            
                 if (isset($_GET['debug'])) {
                     echo "<!-- DEBUG: Password input: " . $password . " -->";
                     echo "<!-- DEBUG: Password in DB: " . $user['password_hash'] . " -->";
