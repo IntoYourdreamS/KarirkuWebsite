@@ -3,8 +3,8 @@
 $supabase_url = 'https://tkjnbelcgfwpbhppsnrl.supabase.co';
 $supabase_key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRram5iZWxjZ2Z3cGJocHBzbnJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3NDA3NjIsImV4cCI6MjA3NzMxNjc2Mn0.wOjK4X2qJV6LzOG4yXxnfeTezDX5_3Sb3wezhCuQAko';
 
-// Fungsi helper untuk query Supabase menggunakan curl
-function supabaseQuery($table, $params = [])
+// Fungsi helper untuk query Supabase menggunakan curl - DENGAN SUPPORT COUNT
+function supabaseQuery($table, $params = [], $options = [])
 {
     global $supabase_url, $supabase_key;
     
@@ -13,28 +13,56 @@ function supabaseQuery($table, $params = [])
         $url .= '?' . http_build_query($params);
     }
     
+    $headers = [
+        'apikey: ' . $supabase_key,
+        'Authorization: Bearer ' . $supabase_key,
+        'Content-Type: application/json',
+    ];
+    
+    // Tambahkan header Prefer untuk count jika diminta
+    if (isset($options['count']) && $options['count'] === 'exact') {
+        $headers[] = 'Prefer: count=exact';
+    }
+    
     $ch = curl_init();
     curl_setopt_array($ch, [
         CURLOPT_URL => $url,
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER => [
-            'apikey: ' . $supabase_key,
-            'Authorization: Bearer ' . $supabase_key,
-            'Content-Type: application/json',
-        ],
+        CURLOPT_HEADER => true, // Penting untuk mendapatkan header response
+        CURLOPT_HTTPHEADER => $headers,
     ]);
     
     $response = curl_exec($ch);
     $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+    
+    // Pisahkan header dan body
+    $headerString = substr($response, 0, $headerSize);
+    $body = substr($response, $headerSize);
+    
     curl_close($ch);
     
-    $data = json_decode($response, true);
+    $data = json_decode($body, true);
     
-    return [
+    // Parse Content-Range header untuk mendapatkan count
+    $count = null;
+    if (isset($options['count']) && $options['count'] === 'exact') {
+        if (preg_match('/Content-Range: \d+-\d+\/(\d+)/i', $headerString, $matches)) {
+            $count = (int)$matches[1];
+        }
+    }
+    
+    $result = [
         'success' => $statusCode >= 200 && $statusCode < 300,
         'data' => $data,
         'status' => $statusCode
     ];
+    
+    if ($count !== null) {
+        $result['count'] = $count;
+    }
+    
+    return $result;
 }
 
 // Fungsi helper untuk insert data ke Supabase
