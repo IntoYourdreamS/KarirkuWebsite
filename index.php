@@ -1,20 +1,20 @@
 <?php
 session_start();
 $isLoggedIn = isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true;
-$userName = $_SESSION['user_name'] ?? '';
+$userName = $_SESSION['user'] ?? ''; // Pastikan ini 'user' bukan 'user_name'
 ?>
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="utf-8">
-    <title>JobEntry - Job Portal Website Template</title>
+    <title>Karirku - Job Portal Website</title> <!-- Changed title -->
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <meta content="" name="keywords">
     <meta content="" name="description">
 
     <!-- Favicon -->
-    <link href="img/favicon.ico" rel="icon">
+    <link href="assets/img/favicon.ico" rel="icon">
 
     <!-- Google Web Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -34,6 +34,57 @@ $userName = $_SESSION['user_name'] ?? '';
 
     <!-- Template Stylesheet -->
     <link href="assets/css/style.css" rel="stylesheet">
+
+    <!-- Custom Styles for Dropdown -->
+    <style>
+        .dropdown-toggle::after {
+            display: none;
+        }
+
+        .user-dropdown {
+            background-color: #001f66 !important;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+        }
+
+        .user-dropdown:hover {
+            background-color: #002c99 !important;
+        }
+
+        .auth-buttons .btn-register {
+            background-color: transparent;
+            color: #001f66;
+            border: 2px solid #001f66;
+            border-radius: 8px;
+            padding: 8px 20px;
+            margin-right: 10px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .auth-buttons .btn-register:hover {
+            background-color: #001f66;
+            color: white;
+        }
+
+        .auth-buttons .btn-login {
+            background-color: #001f66;
+            color: white;
+            border: 2px solid #001f66;
+            border-radius: 8px;
+            padding: 8px 20px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .auth-buttons .btn-login:hover {
+            background-color: #002c99;
+            border-color: #002c99;
+        }
+    </style>
 </head>
 
 <body>
@@ -46,12 +97,11 @@ $userName = $_SESSION['user_name'] ?? '';
         </div>
         <!-- Spinner End -->
 
-
         <!-- Navbar Start -->
         <nav class="navbar navbar-expand-lg bg-white navbar-light shadow sticky-top p-0">
             <div class="container-fluid px-4 px-lg-5 d-flex align-items-center justify-content-between">
                 <a href="index.php" class="navbar-brand d-flex align-items-center text-center py-0">
-                    <img src="assets/img/logo.png" alt="">
+                    <img src="assets/img/logo.png" alt="Karirku Logo">
                 </a>
 
                 <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
@@ -67,28 +117,30 @@ $userName = $_SESSION['user_name'] ?? '';
                     <div class="auth-buttons d-flex align-items-center">
                         <?php if ($isLoggedIn): ?>
                             <div class="dropdown">
-                                <button class="btn btn-primary dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown">
+                                <button class="btn user-dropdown dropdown-toggle text-white" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="fas fa-user me-2"></i><?= htmlspecialchars($userName) ?>
                                 </button>
-                                <ul class="dropdown-menu">
+                                <ul class="dropdown-menu" aria-labelledby="userDropdown">
                                     <li><a class="dropdown-item" href="profile.php"><i class="fas fa-user-circle me-2"></i>Profil</a></li>
                                     <li><a class="dropdown-item" href="my-applications.php"><i class="fas fa-briefcase me-2"></i>Lamaran Saya</a></li>
                                     <li>
                                         <hr class="dropdown-divider">
                                     </li>
-                                    <li><a class="dropdown-item text-danger" href="#" onclick="return confirmLogout()">
+                                    <li><a class="dropdown-item text-danger" href="views/logout.php">
                                             <i class="fas fa-sign-out-alt me-2"></i>Logout
                                         </a></li>
                                 </ul>
                             </div>
                         <?php else: ?>
-                            <a href="register.php" class="btn-register">Register</a>
+                            <a href="views/register.php" class="btn-register">Register</a>
                             <a href="views/login.php" class="btn-login">Login</a>
                         <?php endif; ?>
                     </div>
                 </div>
             </div>
         </nav>
+        <!-- Navbar End -->
+
         <!-- Carousel Start -->
         <div class="container-fluid p-0">
             <div class="owl-carousel header-carousel position-relative">
@@ -100,6 +152,11 @@ $userName = $_SESSION['user_name'] ?? '';
                                 <div class="col-10 col-lg-8">
                                     <h1 class="display-3 text-white animated slideInDown mb-4">Carilah Masa Depanmu Bersama Kami</h1>
                                     <p class="fs-5 fw-medium text-white mb-4 pb-2">Bangun karier impianmu bersama kami. Temukan peluang, jaringan, dan inspirasi untuk menapaki masa depan yang lebih gemilang</p>
+                                    <?php if (!$isLoggedIn): ?>
+                                        <a href="register.php" class="btn btn-primary py-3 px-5">Daftar Sekarang</a>
+                                    <?php else: ?>
+                                        <a href="views/job-list.php" class="btn btn-primary py-3 px-5">Cari Lowongan</a>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
@@ -115,56 +172,56 @@ $userName = $_SESSION['user_name'] ?? '';
                 <h1 class="text-center mb-5 wow fadeInUp" data-wow-delay="0.1s">Cari Berdasarkan Kategori</h1>
                 <div class="row g-4">
                     <div class="col-lg-3 col-sm-6 wow fadeInUp" data-wow-delay="0.1s">
-                        <a class="cat-item rounded p-4" href="">
+                        <a class="cat-item rounded p-4" href="views/job-list.php?category=marketing">
                             <i class="fa fa-3x fa-mail-bulk text-primary mb-4"></i>
                             <h6 class="mb-3">Marketing</h6>
                             <p class="mb-0">123 permintaan</p>
                         </a>
                     </div>
                     <div class="col-lg-3 col-sm-6 wow fadeInUp" data-wow-delay="0.3s">
-                        <a class="cat-item rounded p-4" href="">
+                        <a class="cat-item rounded p-4" href="views/job-list.php?category=customer-service">
                             <i class="fa fa-3x fa-headset text-primary mb-4"></i>
                             <h6 class="mb-3">Customer Service</h6>
                             <p class="mb-0">123 permintaan</p>
                         </a>
                     </div>
                     <div class="col-lg-3 col-sm-6 wow fadeInUp" data-wow-delay="0.5s">
-                        <a class="cat-item rounded p-4" href="">
+                        <a class="cat-item rounded p-4" href="views/job-list.php?category=human-resource">
                             <i class="fa fa-3x fa-user-tie text-primary mb-4"></i>
                             <h6 class="mb-3">Human Resource</h6>
                             <p class="mb-0">123 permintaan</p>
                         </a>
                     </div>
                     <div class="col-lg-3 col-sm-6 wow fadeInUp" data-wow-delay="0.7s">
-                        <a class="cat-item rounded p-4" href="">
+                        <a class="cat-item rounded p-4" href="views/job-list.php?category=project-management">
                             <i class="fa fa-3x fa-tasks text-primary mb-4"></i>
                             <h6 class="mb-3">Project Management</h6>
                             <p class="mb-0">123 permintaan</p>
                         </a>
                     </div>
                     <div class="col-lg-3 col-sm-6 wow fadeInUp" data-wow-delay="0.1s">
-                        <a class="cat-item rounded p-4" href="">
+                        <a class="cat-item rounded p-4" href="views/job-list.php?category=business-development">
                             <i class="fa fa-3x fa-chart-line text-primary mb-4"></i>
                             <h6 class="mb-3">Business Development</h6>
                             <p class="mb-0">123 permintaan</p>
                         </a>
                     </div>
                     <div class="col-lg-3 col-sm-6 wow fadeInUp" data-wow-delay="0.3s">
-                        <a class="cat-item rounded p-4" href="">
+                        <a class="cat-item rounded p-4" href="views/job-list.php?category=sales">
                             <i class="fa fa-3x fa-hands-helping text-primary mb-4"></i>
                             <h6 class="mb-3">Sales & Communication</h6>
                             <p class="mb-0">123 permintaan</p>
                         </a>
                     </div>
                     <div class="col-lg-3 col-sm-6 wow fadeInUp" data-wow-delay="0.5s">
-                        <a class="cat-item rounded p-4" href="">
+                        <a class="cat-item rounded p-4" href="views/job-list.php?category=teaching">
                             <i class="fa fa-3x fa-book-reader text-primary mb-4"></i>
                             <h6 class="mb-3">Teaching & Education</h6>
                             <p class="mb-0">123 permintaan</p>
                         </a>
                     </div>
                     <div class="col-lg-3 col-sm-6 wow fadeInUp" data-wow-delay="0.7s">
-                        <a class="cat-item rounded p-4" href="">
+                        <a class="cat-item rounded p-4" href="views/job-list.php?category=design">
                             <i class="fa fa-3x fa-drafting-compass text-primary mb-4"></i>
                             <h6 class="mb-3">Design & Creative</h6>
                             <p class="mb-0">123 permintaan</p>
@@ -174,7 +231,6 @@ $userName = $_SESSION['user_name'] ?? '';
             </div>
         </div>
         <!-- Category End -->
-
 
         <!-- About Start -->
         <div class="container-xxl py-5">
@@ -203,13 +259,16 @@ $userName = $_SESSION['user_name'] ?? '';
                         <p><i class="fa fa-check text-primary me-3"></i>Sistem pencocokan talenta yang cerdas</p>
                         <p><i class="fa fa-check text-primary me-3"></i>Dukungan penuh untuk pertumbuhan berkelanjutan</p>
                         <p>Daftarkan akun anda sekarang juga</p>
-                        <a class="btn btn-primary py-3 px-5 mt-3" href="">Register</a>
+                        <?php if (!$isLoggedIn): ?>
+                            <a class="btn btn-primary py-3 px-5 mt-3" href="register.php">Register</a>
+                        <?php else: ?>
+                            <a class="btn btn-primary py-3 px-5 mt-3" href="views/job-list.php">Cari Lowongan</a>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
         </div>
         <!-- About End -->
-
 
         <!-- Jobs Start -->
         <div class="container-xxl py-5">
@@ -239,13 +298,17 @@ $userName = $_SESSION['user_name'] ?? '';
                                     <div class="col-sm-12 col-md-4 d-flex flex-column align-items-start align-items-md-end justify-content-center">
                                         <div class="d-flex mb-3">
                                             <a class="btn btn-light btn-square me-3" href=""><i class="far fa-heart text-primary"></i></a>
-                                            <a class="btn btn-primary" href="">Apply Now</a>
+                                            <?php if ($isLoggedIn): ?>
+                                                <a class="btn btn-primary" href="">Apply Now</a>
+                                            <?php else: ?>
+                                                <a class="btn btn-primary" href="views/login.php">Login untuk Apply</a>
+                                            <?php endif; ?>
                                         </div>
                                         <small class="text-truncate"><i class="far fa-calendar-alt text-primary me-2"></i>Date Line: 01 Jan, 2045</small>
                                     </div>
                                 </div>
                             </div>
-                            <a class="btn btn-primary py-3 px-5" href="" style="background-color: #001f66;">Lainnya</a>
+                            <a class="btn btn-primary py-3 px-5" href="views/job-list.php" style="background-color: #001f66;">Lainnya</a>
                         </div>
                     </div>
                 </div>
@@ -269,7 +332,16 @@ $userName = $_SESSION['user_name'] ?? '';
 
     <!-- Template Javascript -->
     <script src="assets/js/main.js"></script>
-    <?php include "include/logout-modal.php" ?>
+
+    <!-- Logout Confirmation Script -->
+    <script>
+        function confirmLogout() {
+            if (confirm('Apakah Anda yakin ingin logout?')) {
+                window.location.href = 'views/logout.php';
+            }
+            return false;
+        }
+    </script>
 </body>
 
 </html>
