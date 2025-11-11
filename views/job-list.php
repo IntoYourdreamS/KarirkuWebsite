@@ -8,7 +8,6 @@ $userName = $_SESSION['user_name'] ?? '';
 function getDaftarLokasi()
 {
     try {
-        // Query untuk mendapatkan lokasi unik dari lowongan yang statusnya open
         $params = [
             'select' => 'lokasi',
             'status' => 'eq.open',
@@ -23,7 +22,6 @@ function getDaftarLokasi()
 
         $data = $response['data'];
 
-        // Ekstrak lokasi unik
         $lokasiUnik = [];
         foreach ($data as $row) {
             if (!empty($row['lokasi']) && !in_array($row['lokasi'], $lokasiUnik)) {
@@ -31,7 +29,6 @@ function getDaftarLokasi()
             }
         }
 
-        // Urutkan secara alfabet
         sort($lokasiUnik);
 
         return $lokasiUnik;
@@ -40,17 +37,13 @@ function getDaftarLokasi()
         return [];
     }
 }
-
-// Fungsi untuk melakukan pencarian lowongan
 function searchLowongan($keyword = '', $lokasi = '', $page = 1, $limit = 5)
 {
-    // Validasi parameter
     $page = max(1, (int)$page);
     $limit = max(1, (int)$limit);
     $offset = ($page - 1) * $limit;
 
     try {
-        // Build parameter query
         $params = [
             'select' => '*',
             'limit' => $limit,
@@ -59,17 +52,14 @@ function searchLowongan($keyword = '', $lokasi = '', $page = 1, $limit = 5)
             'status' => 'eq.open'
         ];
 
-        // Filter berdasarkan keyword
         if (!empty($keyword)) {
             $params['or'] = "(judul.ilike.%{$keyword}%,kategori.ilike.%{$keyword}%,deskripsi.ilike.%{$keyword}%,kualifikasi.ilike.%{$keyword}%)";
         }
 
-        // Filter berdasarkan lokasi
         if (!empty($lokasi) && $lokasi !== 'semua') {
             $params['lokasi'] = 'ilike.%' . $lokasi . '%';
         }
 
-        // Eksekusi query untuk data
         $response = supabaseQuery('lowongan', $params);
 
         if (!$response['success']) {
@@ -78,7 +68,6 @@ function searchLowongan($keyword = '', $lokasi = '', $page = 1, $limit = 5)
 
         $data = $response['data'];
 
-        // Hitung total data untuk pagination - PERBAIKAN DI SINI
         $countParams = [
             'select' => 'id_lowongan',
             'status' => 'eq.open'
@@ -92,10 +81,8 @@ function searchLowongan($keyword = '', $lokasi = '', $page = 1, $limit = 5)
             $countParams['lokasi'] = 'ilike.%' . $lokasi . '%';
         }
 
-        // Gunakan supabaseQuery dengan option count
         $countResponse = supabaseQuery('lowongan', $countParams, ['count' => 'exact']);
 
-        // Ambil total dari count response
         $totalData = $countResponse['count'] ?? count($data);
         $totalPages = $totalData > 0 ? ceil($totalData / $limit) : 1;
 
@@ -131,19 +118,15 @@ function searchLowongan($keyword = '', $lokasi = '', $page = 1, $limit = 5)
     }
 }
 
-// Ambil daftar lokasi dari database
 $daftarLokasi = getDaftarLokasi();
 
-// Ambil parameter pencarian dari URL
 $keyword = isset($_GET['keyword']) ? trim($_GET['keyword']) : '';
 $lokasi = isset($_GET['lokasi']) ? $_GET['lokasi'] : '';
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $limit = 5;
 
-// Jalankan pencarian
 $result = searchLowongan($keyword, $lokasi, $page, $limit);
 
-// Extract data dari result
 $data = $result['data'] ?? [];
 $totalPages = $result['pagination']['total_pages'] ?? 1;
 $currentPage = $result['pagination']['current_page'] ?? 1;
@@ -151,7 +134,6 @@ $totalData = $result['pagination']['total_data'] ?? 0;
 $searchKeyword = $result['search_params']['keyword'] ?? '';
 $searchLokasi = $result['search_params']['lokasi'] ?? '';
 
-// Debug info
 if (isset($_GET['debug'])) {
     echo "<!-- Debug: Success=" . ($result['success'] ? 'true' : 'false') .
         ", Data Count=" . count($data) .
@@ -311,8 +293,8 @@ if (isset($_GET['debug'])) {
 
             <div class="collapse navbar-collapse justify-content-between" id="navbarCollapse">
                 <div class="navbar-nav ms-0 mt-1">
-                    <a href="../index.php" class="nav-item nav-link active">HOME</a>
-                    <a href="#" class="nav-item nav-link">LOKER</a>
+                    <a href="../index.php" class="nav-item nav-link active">Home</a>
+                    <a href="#" class="nav-item nav-link">Cari Pekerjaan</a>
                 </div>
 
                 <div class="auth-buttons d-flex align-items-center">
@@ -377,7 +359,6 @@ if (isset($_GET['debug'])) {
                                 </option>
                             <?php endforeach; ?>
                         <?php else: ?>
-                            <!-- Fallback jika tidak ada data lokasi -->
                             <option value="jakarta" <?= $searchLokasi == 'jakarta' ? 'selected' : '' ?>>Jakarta</option>
                             <option value="surabaya" <?= $searchLokasi == 'surabaya' ? 'selected' : '' ?>>Surabaya</option>
                             <option value="bandung" <?= $searchLokasi == 'bandung' ? 'selected' : '' ?>>Bandung</option>
@@ -393,7 +374,6 @@ if (isset($_GET['debug'])) {
             </form>
         </div>
 
-        <!-- Info Hasil Pencarian -->
         <?php if (!empty($searchKeyword) || (!empty($searchLokasi) && $searchLokasi !== 'semua')): ?>
             <div class="search-results-info">
                 <h6 class="mb-2">Hasil Pencarian:</h6>
@@ -407,7 +387,6 @@ if (isset($_GET['debug'])) {
             </div>
         <?php endif; ?>
 
-        <!-- Daftar Lowongan -->
         <?php if (!empty($data)) : ?>
             <?php foreach ($data as $row): ?>
                 <div class="job-item p-4 mb-4 border rounded shadow-sm">
@@ -444,7 +423,6 @@ if (isset($_GET['debug'])) {
                 <h5 class="text-muted">Tidak ada lowongan yang ditemukan</h5>
                 <?php if ($totalData === 0 && empty($searchKeyword) && empty($searchLokasi)): ?>
                     <p class="text-muted">Belum ada lowongan yang tersedia saat ini</p>
-                    <!-- Debug info untuk developer -->
                     <?php if (isset($_GET['debug'])): ?>
                         <div class="alert alert-warning mt-3">
                             <small>
@@ -463,7 +441,6 @@ if (isset($_GET['debug'])) {
             </div>
         <?php endif; ?>
 
-        <!-- Pagination -->
         <?php if ($totalPages > 1): ?>
             <div class="d-flex justify-content-center mt-4">
                 <nav>

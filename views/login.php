@@ -212,8 +212,8 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
 
             <div class="collapse navbar-collapse justify-content-between" id="navbarCollapse">
                 <div class="navbar-nav ms-0 mt-1">
-                    <a href="index.php" class="nav-item nav-link active">HOME</a>
-                    <a href="job-list.php" class="nav-item nav-link">LOKER</a>
+                    <a href="../index.php" class="nav-item nav-link active">Home</a>
+                    <a href="job-list.php" class="nav-item nav-link">Cari Pekerjaan</a>
                 </div>
                 <div class="auth-buttons d-flex align-items-center">
                     <a href="register.php" class="btn-register">Register</a>
