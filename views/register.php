@@ -254,15 +254,21 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
                         ?>
                     </div>
                 <?php endif; ?>
+                
+                <?php if (isset($_GET['error'])): ?>
+                    <div class="alert alert-danger mt-3">
+                        <?php echo htmlspecialchars($_GET['error']); ?>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
         <div class="login-card2">
-            <button class="btn-google">
+            <a href="google-auth.php" class="btn-google">
                 <span class="btn-text">Pilih akun google</span>
                 <span class="btn-icon">
                     <img src="../assets/img/icon-google2.png" alt="">
                 </span>
-            </button>
+            </a>
         </div>
         <div class="span-text">
             <h1>Sudah punya akun? klik Login</h1>

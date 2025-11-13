@@ -1,128 +1,16 @@
 <?php
-require __DIR__ . '/../config/supabase.php';
+require __DIR__ . '/../function/job-functions.php';
 
 session_start();
 $isLoggedIn = isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true;
 $userName = $_SESSION['user_name'] ?? '';
 
-function getDaftarLokasi()
-{
-    try {
-        $params = [
-            'select' => 'lokasi',
-            'status' => 'eq.open',
-            'order' => 'lokasi.asc'
-        ];
-
-        $response = supabaseQuery('lowongan', $params);
-
-        if (!$response['success']) {
-            throw new Exception('Failed to fetch locations: ' . ($response['error'] ?? 'Unknown error'));
-        }
-
-        $data = $response['data'];
-
-        $lokasiUnik = [];
-        foreach ($data as $row) {
-            if (!empty($row['lokasi']) && !in_array($row['lokasi'], $lokasiUnik)) {
-                $lokasiUnik[] = $row['lokasi'];
-            }
-        }
-
-        sort($lokasiUnik);
-
-        return $lokasiUnik;
-    } catch (Exception $e) {
-        error_log("Error in getDaftarLokasi: " . $e->getMessage());
-        return [];
-    }
-}
-function searchLowongan($keyword = '', $lokasi = '', $page = 1, $limit = 5)
-{
-    $page = max(1, (int)$page);
-    $limit = max(1, (int)$limit);
-    $offset = ($page - 1) * $limit;
-
-    try {
-        $params = [
-            'select' => '*',
-            'limit' => $limit,
-            'offset' => $offset,
-            'order' => 'dibuat_pada.desc',
-            'status' => 'eq.open'
-        ];
-
-        if (!empty($keyword)) {
-            $params['or'] = "(judul.ilike.%{$keyword}%,kategori.ilike.%{$keyword}%,deskripsi.ilike.%{$keyword}%,kualifikasi.ilike.%{$keyword}%)";
-        }
-
-        if (!empty($lokasi) && $lokasi !== 'semua') {
-            $params['lokasi'] = 'ilike.%' . $lokasi . '%';
-        }
-
-        $response = supabaseQuery('lowongan', $params);
-
-        if (!$response['success']) {
-            throw new Exception('Failed to fetch data: ' . ($response['error'] ?? 'Unknown error'));
-        }
-
-        $data = $response['data'];
-
-        $countParams = [
-            'select' => 'id_lowongan',
-            'status' => 'eq.open'
-        ];
-
-        if (!empty($keyword)) {
-            $countParams['or'] = "(judul.ilike.%{$keyword}%,kategori.ilike.%{$keyword}%,deskripsi.ilike.%{$keyword}%,kualifikasi.ilike.%{$keyword}%)";
-        }
-
-        if (!empty($lokasi) && $lokasi !== 'semua') {
-            $countParams['lokasi'] = 'ilike.%' . $lokasi . '%';
-        }
-
-        $countResponse = supabaseQuery('lowongan', $countParams, ['count' => 'exact']);
-
-        $totalData = $countResponse['count'] ?? count($data);
-        $totalPages = $totalData > 0 ? ceil($totalData / $limit) : 1;
-
-        return [
-            'success' => true,
-            'data' => $data,
-            'pagination' => [
-                'current_page' => $page,
-                'total_pages' => $totalPages,
-                'total_data' => $totalData,
-                'limit' => $limit,
-                'offset' => $offset
-            ],
-            'search_params' => [
-                'keyword' => $keyword,
-                'lokasi' => $lokasi
-            ]
-        ];
-    } catch (Exception $e) {
-        error_log("Error in searchLowongan: " . $e->getMessage());
-        return [
-            'success' => false,
-            'error' => $e->getMessage(),
-            'data' => [],
-            'pagination' => [
-                'current_page' => $page,
-                'total_pages' => 1,
-                'total_data' => 0,
-                'limit' => $limit,
-                'offset' => $offset
-            ]
-        ];
-    }
-}
-
 $daftarLokasi = getDaftarLokasi();
 
-$keyword = isset($_GET['keyword']) ? trim($_GET['keyword']) : '';
-$lokasi = isset($_GET['lokasi']) ? $_GET['lokasi'] : '';
-$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$searchInput = validateSearchInput($_GET);
+$keyword = $searchInput['keyword'];
+$lokasi = $searchInput['lokasi'];
+$page = $searchInput['page'];
 $limit = 5;
 
 $result = searchLowongan($keyword, $lokasi, $page, $limit);
@@ -175,8 +63,12 @@ if (isset($_GET['debug'])) {
     <link href="../assets/css/style.css" rel="stylesheet">
 
     <style>
+        body {
+            background-color: white !important;
+        }
+
         .search-container {
-            background-color: #fff;
+            background-color: #ffffffff;
             border-radius: 8px;
             padding: 20px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -293,8 +185,8 @@ if (isset($_GET['debug'])) {
 
             <div class="collapse navbar-collapse justify-content-between" id="navbarCollapse">
                 <div class="navbar-nav ms-0 mt-1">
-                    <a href="../index.php" class="nav-item nav-link active">Home</a>
-                    <a href="#" class="nav-item nav-link">Cari Pekerjaan</a>
+                    <a href="../index.php" class="nav-item nav-link">Home</a>
+                    <a href="#" class="nav-item nav-link active">Cari Pekerjaan</a>
                 </div>
 
                 <div class="auth-buttons d-flex align-items-center">
@@ -329,6 +221,10 @@ if (isset($_GET['debug'])) {
         <div class="container my-5 pt-5 pb-4">
             <h1 class="display-3 text-white mb-3 animated slideInDown">Job List</h1>
             <nav aria-label="breadcrumb">
+                <ol class="breadcrumb text-uppercase">
+                    <li class="breadcrumb-item"><a href="../index.php">Home</a></li>
+                    <li class="breadcrumb-item text-white active" aria-current="page">Job List</li>
+                </ol>
             </nav>
         </div>
     </div>
@@ -401,14 +297,14 @@ if (isset($_GET['debug'])) {
                                 <i class="fa fa-tags me-2"></i><?= htmlspecialchars($row['kategori'] ?? 'Kategori tidak tersedia') ?>
                             </p>
                             <p class="mb-1 text-muted">
-                                <i class="fa fa-briefcase me-2"></i><?= htmlspecialchars($row['tipe_pekerjaan'] ?? 'Tipe tidak tersedia') ?> |
+                                <i class="fa fa-briefcase me-2"></i><?= htmlspecialchars(formatTipePekerjaan($row['tipe_pekerjaan'] ?? '')) ?> |
                                 <i class="fa fa-coins me-2"></i><?= htmlspecialchars($row['gaji_range'] ?? 'Gaji tidak tersedia') ?> |
                                 <i class="fa fa-building me-2"></i><?= htmlspecialchars($row['mode_kerja'] ?? 'Mode kerja tidak tersedia') ?>
                             </p>
                             <p class="mb-0"><?= htmlspecialchars(substr($row['deskripsi'] ?? '', 0, 150)) ?>...</p>
                         </div>
                         <div class="col-md-3 text-end">
-                            <a href="#" class="btn btn-primary rounded-pill px-4">Apply Now</a>
+                            <a href="job-detail.php?id=<?= htmlspecialchars($row['id_lowongan']) ?>" class="btn btn-primary rounded-pill px-4">Apply Now</a>
                             <div class="text-muted mt-2">
                                 <i class="fa fa-hourglass-half me-2"></i>
                                 Batas: <?= !empty($row['batas_tanggal']) ? date('d M Y', strtotime($row['batas_tanggal'])) : 'Tidak ditentukan' ?>

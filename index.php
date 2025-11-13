@@ -153,7 +153,7 @@ $userName = $_SESSION['user'] ?? ''; // Pastikan ini 'user' bukan 'user_name'
                                     <h1 class="display-3 text-white animated slideInDown mb-4">Carilah Masa Depanmu Bersama Kami</h1>
                                     <p class="fs-5 fw-medium text-white mb-4 pb-2">Bangun karier impianmu bersama kami. Temukan peluang, jaringan, dan inspirasi untuk menapaki masa depan yang lebih gemilang</p>
                                     <?php if (!$isLoggedIn): ?>
-                                        <a href="register.php" class="btn btn-primary py-3 px-5">Daftar Sekarang</a>
+                                        <a href="views/register.php" class="btn btn-primary py-3 px-5">Daftar Sekarang</a>
                                     <?php else: ?>
                                         <a href="views/job-list.php" class="btn btn-primary py-3 px-5">Cari Lowongan</a>
                                     <?php endif; ?>
