@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once 'function/supabase.php';
 $isLoggedIn = isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true;
 $userName = $_SESSION['user'] ?? ''; // Pastikan ini 'user' bukan 'user_name'
 ?>
@@ -58,7 +59,7 @@ $userName = $_SESSION['user'] ?? ''; // Pastikan ini 'user' bukan 'user_name'
             border: 2px solid #001f66;
             border-radius: 8px;
             padding: 8px 20px;
-            margin-right: 10px;
+            margin-right: 20px;
             text-decoration: none;
             font-weight: 500;
             transition: all 0.3s;
@@ -83,6 +84,22 @@ $userName = $_SESSION['user'] ?? ''; // Pastikan ini 'user' bukan 'user_name'
         .auth-buttons .btn-login:hover {
             background-color: #002c99;
             border-color: #002c99;
+        }
+
+        /* .dropdown {
+            margin-right: 1.5rem !important;
+        } */
+
+        .dropdown-menu {
+            left: auto !important;
+            right: 0 !important;
+        }
+
+        .user-dropdown:focus,
+        .user-dropdown:active {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
         }
     </style>
 </head>
@@ -115,13 +132,24 @@ $userName = $_SESSION['user'] ?? ''; // Pastikan ini 'user' bukan 'user_name'
                     </div>
 
                     <div class="auth-buttons d-flex align-items-center">
-                        <?php if ($isLoggedIn): ?>
+                        <?php if ($isLoggedIn && isset($_SESSION['user_id'])): ?>
+                            <?php
+                            require_once 'function/supabase.php';
+                            $pencaker = getPencakerByUserId($_SESSION['user_id']);
+                            $fotoProfil = $pencaker['foto_profil_url'] ?? '';
+                            ?>
                             <div class="dropdown">
-                                <button class="btn user-dropdown dropdown-toggle text-white" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class="fas fa-user me-2"></i><?= htmlspecialchars($userName) ?>
+                                <button class="btn user-dropdown dropdown-toggle text-white p-0 border-0 bg-transparent" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="box-shadow: none !important; background-color: white !important;">
+                                    <?php if (!empty($fotoProfil)): ?>
+                                        <img src="<?= htmlspecialchars($fotoProfil) ?>" alt="Profile" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;">
+                                    <?php else: ?>
+                                        <div class="rounded-circle d-flex align-items-center justify-content-center bg-light text-dark" style="width: 40px; height: 40px;">
+                                            <i class="fas fa-user"></i>
+                                        </div>
+                                    <?php endif; ?>
                                 </button>
                                 <ul class="dropdown-menu" aria-labelledby="userDropdown">
-                                    <li><a class="dropdown-item" href="profile.php"><i class="fas fa-user-circle me-2"></i>Profil</a></li>
+                                    <li><a class="dropdown-item" href="views/profile.php"><i class="fas fa-user-circle me-2"></i>Profil</a></li>
                                     <li><a class="dropdown-item" href="my-applications.php"><i class="fas fa-briefcase me-2"></i>Lamaran Saya</a></li>
                                     <li>
                                         <hr class="dropdown-divider">

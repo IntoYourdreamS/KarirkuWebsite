@@ -231,7 +231,7 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
             <div class="login-body">
                 <h4 class="login-title"><img src="../assets/img/karirkulogo.png" alt="" style="width: 40px;"> Login</h4>
                 <!-- Pastikan action form sudah benar -->
-                <form action="auth-process.php" method="POST">
+                <form action="../function/auth-process.php" method="POST">
                     <input type="hidden" name="action" value="login">
 
                     <div class="form-group">

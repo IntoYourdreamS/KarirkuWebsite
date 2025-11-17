@@ -57,6 +57,19 @@ $benefit_list = parseBenefit($data['benefit']);
 
     <!-- Template Stylesheet -->
     <link href="../assets/css/style.css" rel="stylesheet">
+    <style>
+        .dropdown-menu {
+            left: auto !important;
+            right: 0 !important;
+        }
+
+        .user-dropdown:focus,
+        .user-dropdown:active {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+    </style>
 </head>
 
 <body>
@@ -74,7 +87,7 @@ $benefit_list = parseBenefit($data['benefit']);
         <nav class="navbar navbar-expand-lg bg-white navbar-light shadow sticky-top p-0">
             <div class="container-fluid px-4 px-lg-5 d-flex align-items-center justify-content-between">
                 <a href="index.php" class="navbar-brand d-flex align-items-center text-center py-0">
-                    <img src="../assets/img/logo.png" alt="">
+                    <img src="../assets/img/logo.png" alt="Karirku Logo">
                 </a>
 
                 <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
@@ -83,23 +96,33 @@ $benefit_list = parseBenefit($data['benefit']);
 
                 <div class="collapse navbar-collapse justify-content-between" id="navbarCollapse">
                     <div class="navbar-nav ms-0 mt-1">
-                        <a href="../index.php" class="nav-item nav-link">Home</a>
-                        <a href="job-list.php" class="nav-item nav-link active">Cari Pekerjaan</a>
+                        <a href="../index.php" class="nav-item nav-link active">Home</a>
+                        <a href="job-list.php" class="nav-item nav-link">Cari Pekerjaan</a>
                     </div>
 
                     <div class="auth-buttons d-flex align-items-center">
-                        <?php if ($isLoggedIn): ?>
+                        <?php if ($isLoggedIn && isset($_SESSION['user_id'])): ?>
+                            <?php
+                            $pencaker = getPencakerByUserId($_SESSION['user_id']);
+                            $fotoProfil = $pencaker['foto_profil_url'] ?? '';
+                            ?>
                             <div class="dropdown">
-                                <button class="btn btn-primary dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown">
-                                    <i class="fas fa-user me-2"></i><?= htmlspecialchars($userName) ?>
+                                <button class="btn user-dropdown dropdown-toggle text-white p-0 border-0 bg-transparent" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="box-shadow: none !important; background-color: white !important;">
+                                    <?php if (!empty($fotoProfil)): ?>
+                                        <img src="<?= htmlspecialchars($fotoProfil) ?>" alt="Profile" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;">
+                                    <?php else: ?>
+                                        <div class="rounded-circle d-flex align-items-center justify-content-center bg-light text-dark" style="width: 40px; height: 40px;">
+                                            <i class="fas fa-user"></i>
+                                        </div>
+                                    <?php endif; ?>
                                 </button>
-                                <ul class="dropdown-menu">
+                                <ul class="dropdown-menu" aria-labelledby="userDropdown">
                                     <li><a class="dropdown-item" href="profile.php"><i class="fas fa-user-circle me-2"></i>Profil</a></li>
                                     <li><a class="dropdown-item" href="my-applications.php"><i class="fas fa-briefcase me-2"></i>Lamaran Saya</a></li>
                                     <li>
                                         <hr class="dropdown-divider">
                                     </li>
-                                    <li><a class="dropdown-item text-danger" href="#" onclick="return confirmLogout()">
+                                    <li><a class="dropdown-item text-danger" href="views/logout.php">
                                             <i class="fas fa-sign-out-alt me-2"></i>Logout
                                         </a></li>
                                 </ul>

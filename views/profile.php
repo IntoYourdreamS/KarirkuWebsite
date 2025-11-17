@@ -1,3 +1,40 @@
+<?php
+session_start();
+require_once __DIR__ . '/../function/supabase.php';
+
+// Pastikan user sudah login
+if (!isset($_SESSION['user_id'])) {
+    header('Location: login.php');
+    exit;
+}
+
+$user_id = $_SESSION['user_id'];
+
+// Ambil data user dari tabel pengguna
+$user = getUserById($user_id);
+if (!$user) {
+    header('Location: login.php');
+    exit;
+}
+
+// Ambil data profil dari tabel pencaker
+$pencaker = getPencakerByUserId($user_id);
+
+// Jika belum ada profil pencaker, redirect ke halaman create profile
+if (!$pencaker) {
+    header('Location: create_profile.php');
+    exit;
+}
+
+// Hitung usia dari tanggal lahir
+$usia = null;
+if (!empty($pencaker['tanggal_lahir'])) {
+    $tanggalLahir = new DateTime($pencaker['tanggal_lahir']);
+    $today = new DateTime();
+    $usia = $today->diff($tanggalLahir)->y;
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -5,8 +42,6 @@
     <meta charset="utf-8">
     <title>Profile - Karirku</title>
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
-    <meta content="" name="keywords">
-    <meta content="" name="description">
 
     <!-- Favicon -->
     <link href="../assets/img/favicon.ico" rel="icon">
@@ -43,7 +78,7 @@
             background: white;
             border-radius: 20px;
             padding: 40px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
             margin-bottom: 30px;
             position: relative;
         }
@@ -152,13 +187,13 @@
             background: white;
             border-radius: 16px;
             padding: 30px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
             transition: transform 0.3s, box-shadow 0.3s;
         }
 
         .info-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 6px 25px rgba(0,0,0,0.1);
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.1);
         }
 
         .card-title {
@@ -219,6 +254,10 @@
             cursor: pointer;
         }
 
+        .menu-icon:hover {
+            color: #003399;
+        }
+
         @media (max-width: 992px) {
             .bottom-cards {
                 grid-template-columns: 1fr;
@@ -258,8 +297,8 @@
                     <a href="job-list.php" class="nav-item nav-link">Cari Pekerjaan</a>
                 </div>
                 <div class="auth-buttons d-flex align-items-center">
-                    <a href="register.php" class="btn-register">Register</a>
-                    <a href="login.php" class="btn-login">Login</a>
+                    <span class="me-3">Halo, <?php echo htmlspecialchars($pencaker['nama_lengkap'] ?? $user['nama_lengkap']); ?></span>
+                    <a href="logout.php" class="btn-login">Logout</a>
                 </div>
             </div>
         </div>
@@ -269,46 +308,79 @@
     <div class="profile-container">
         <!-- Main Profile Card -->
         <div class="profile-card">
-            <i class="bi bi-three-dots-vertical menu-icon"></i>
-            
+            <i class="bi bi-pencil-square menu-icon" onclick="window.location.href='edit_profile.php'" title="Edit Profile"></i>
+
             <div class="profile-header">
                 <div class="profile-left">
-                    <img src="../assets/img/nando.jpg" alt="Profile" class="profile-image">
-                    <h2 class="profile-name">Sultan Fachri Aziz</h2>
+                    <img src="<?php echo !empty($pencaker['foto_profil_url']) ? htmlspecialchars($pencaker['foto_profil_url']) : '../assets/img/default-avatar.png'; ?>"
+                        alt="Profile"
+                        class="profile-image">
+                    <h2 class="profile-name">
+                        <?php echo htmlspecialchars($pencaker['nama_lengkap'] ?? 'Nama Belum Diisi'); ?>
+                    </h2>
                 </div>
 
                 <div class="profile-info">
                     <div class="info-item">
                         <span class="info-label">Phone</span>
-                        <span class="info-value">081331909435</span>
+                        <span class="info-value">
+                            <?php echo htmlspecialchars($pencaker['no_hp'] ?? '-'); ?>
+                        </span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Email</span>
-                        <span class="info-value"><a href="mailto:Sul12345@gmail.com">Sul12345@gmail.com</a></span>
+                        <span class="info-value">
+                            <a href="mailto:<?php echo htmlspecialchars($pencaker['email_pencaker'] ?? $user['email']); ?>">
+                                <?php echo htmlspecialchars($pencaker['email_pencaker'] ?? $user['email']); ?>
+                            </a>
+                        </span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Lokasi</span>
-                        <span class="info-value">Indonesia</span>
+                        <span class="info-value">
+                            <?php echo htmlspecialchars($pencaker['alamat'] ?? '-'); ?>
+                        </span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Usia, jenis kelamin</span>
-                        <span class="info-value">20, Laki-laki</span>
+                        <span class="info-value">
+                            <?php echo $usia ?? '-'; ?>,
+                            <?php
+                            $gender_display = [
+                                'male' => 'Laki-laki',
+                                'female' => 'Perempuan',
+                                'other' => 'Lainnya'
+                            ];
+                            echo htmlspecialchars($gender_display[$pencaker['gender']] ?? '-');
+                            ?>
+                        </span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">Pendidikan terakhir</span>
-                        <span class="info-value">Kuli</span>
+                        <span class="info-label">Tanggal Lahir</span>
+                        <span class="info-value">
+                            <?php
+                            if (!empty($pencaker['tanggal_lahir'])) {
+                                $date = new DateTime($pencaker['tanggal_lahir']);
+                                echo $date->format('d F Y');
+                            } else {
+                                echo '-';
+                            }
+                            ?>
+                        </span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">Pengalaman kerja</span>
-                        <span class="info-value">Mentri keuangan</span>
+                        <span class="info-label">Pengalaman Kerja</span>
+                        <span class="info-value">
+                            <?php echo htmlspecialchars($pencaker['pengalaman_tahun'] ?? '0'); ?> Tahun
+                        </span>
                     </div>
                 </div>
             </div>
 
             <div class="status-badges">
-                <div class="badge-custom badge-yellow">Pengajuan</div>
-                <div class="badge-custom badge-green">Diterima</div>
-                <div class="badge-custom badge-red">Ditolak</div>
+                <div class="badge-custom badge-yellow">Pengajuan (0)</div>
+                <div class="badge-custom badge-green">Diterima (0)</div>
+                <div class="badge-custom badge-red">Ditolak (0)</div>
             </div>
         </div>
 
@@ -317,28 +389,28 @@
             <!-- Aktivitas Card -->
             <div class="info-card">
                 <h3 class="card-title">Aktivitas</h3>
-                <div class="card-item">
+                <div class="card-item" onclick="window.location.href='saved-jobs.php'">
                     <div class="card-item-left">
                         <i class="bi bi-bookmark card-icon"></i>
                         <span class="card-item-text">Disimpan</span>
                     </div>
                     <i class="bi bi-chevron-right card-arrow"></i>
                 </div>
-                <div class="card-item">
+                <div class="card-item" onclick="window.location.href='liked-jobs.php'">
                     <div class="card-item-left">
                         <i class="bi bi-heart card-icon"></i>
                         <span class="card-item-text">Suka</span>
                     </div>
                     <i class="bi bi-chevron-right card-arrow"></i>
                 </div>
-                <div class="card-item">
+                <div class="card-item" onclick="window.location.href='favorite-jobs.php'">
                     <div class="card-item-left">
                         <i class="bi bi-star card-icon"></i>
                         <span class="card-item-text">Favorit</span>
                     </div>
                     <i class="bi bi-chevron-right card-arrow"></i>
                 </div>
-                <div class="card-item">
+                <div class="card-item" onclick="window.location.href='<?php echo htmlspecialchars($pencaker['cv_url'] ?? '#'); ?>'">
                     <div class="card-item-left">
                         <i class="bi bi-file-text card-icon"></i>
                         <span class="card-item-text">CV</span>
@@ -362,14 +434,14 @@
             <!-- Akun Card -->
             <div class="info-card">
                 <h3 class="card-title">Akun</h3>
-                <div class="card-item">
+                <div class="card-item" onclick="window.location.href='edit_profile.php'">
                     <div class="card-item-left">
-                        <i class="bi bi-shield-check card-icon"></i>
-                        <span class="card-item-text">Beralih akun</span>
+                        <i class="bi bi-person-gear card-icon"></i>
+                        <span class="card-item-text">Edit Profil</span>
                     </div>
                     <i class="bi bi-chevron-right card-arrow"></i>
                 </div>
-                <div class="card-item">
+                <div class="card-item" onclick="if(confirm('Apakah Anda yakin ingin keluar?')) window.location.href='logout.php'">
                     <div class="card-item-left">
                         <i class="bi bi-box-arrow-right card-icon"></i>
                         <span class="card-item-text">Keluar</span>

@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once __DIR__ . 'supabase.php';
+require_once __DIR__ . '/../function/supabase.php';
 
 if ($_POST['action'] == 'register') {
     $username = trim($_POST['username']);
@@ -59,7 +59,7 @@ if ($_POST['action'] == 'register') {
     }
     
 } elseif ($_POST['action'] == 'login') {
-    $email = trim($_POST['username']); // Input dari form bernama 'username' tapi isinya email
+    $email = trim($_POST['username']); 
     $password = $_POST['password'];
 
     if (empty($email) || empty($password)) {
