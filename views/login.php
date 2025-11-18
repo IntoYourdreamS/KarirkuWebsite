@@ -40,8 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             } else {
                 $error = 'Password salah!';
-
-            
+                
                 if (isset($_GET['debug'])) {
                     echo "<!-- DEBUG: Password input: " . $password . " -->";
                     echo "<!-- DEBUG: Password in DB: " . $user['password_hash'] . " -->";

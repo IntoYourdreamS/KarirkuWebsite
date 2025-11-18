@@ -27,11 +27,14 @@
   margin: 0;
   font-weight: 700;
   font-size: 28px;
+  color: #f0f0f0; /* putih silver */
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.4), 0 0 15px rgba(192, 192, 192, 0.6); /* efek silver glow */
 }
 
 .auth-header p {
   margin: 10px 0 0 0;
-  opacity: 0.9;
+  color: #d9d9d9; /* abu-abu muda biar lembut */
+  opacity: 1;
 }
 
 .auth-body {
