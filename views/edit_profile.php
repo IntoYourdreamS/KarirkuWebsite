@@ -2,6 +2,11 @@
 session_start();
 require_once __DIR__ . '/../function/supabase.php';
 
+$isLoggedIn = isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true;
+$userName = $_SESSION['user_name'] ?? '';
+$user_id = $_SESSION['user_id'];
+$user = getUserById($user_id);
+$pencaker = getPencakerByUserId($user_id);
 // Pastikan user sudah login
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
@@ -13,25 +18,23 @@ $user_id = $_SESSION['user_id'];
 $user = getUserById($user_id);
 $pencaker = getPencakerByUserId($user_id);
 
-if (!$pencaker) {
-    header('Location: create_profile.php');
-    exit;
-}
+// Tentukan apakah mode edit atau create
+$isEdit = $pencaker ? true : false;
 
 $message = '';
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nama_lengkap = trim($_POST['nama_lengkap'] ?? '');
-    $email_pencaker = trim($_POST['email_pencaker'] ?? '');
+    $email_pencaker = trim($_POST['email_pencaker'] ?? $user['email']);
     $no_hp = trim($_POST['no_hp'] ?? '');
     $alamat = trim($_POST['alamat'] ?? '');
-    $tanggal_lahir = $_POST['tanggal_lahir'] ?? null;
+    $tanggal_lahir = !empty(trim($_POST['tanggal_lahir'] ?? '')) ? $_POST['tanggal_lahir'] : null;
     $gender = $_POST['gender'] ?? '';
     $pengalaman_tahun = $_POST['pengalaman_tahun'] ?? 0;
 
-    // Data yang akan diupdate
-    $updateData = [
+    // Data yang akan diupdate atau diinsert
+    $profileData = [
         'nama_lengkap' => $nama_lengkap,
         'email_pencaker' => $email_pencaker,
         'no_hp' => $no_hp,
@@ -59,12 +62,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $filename = 'profile_' . $user_id . '_' . time() . '.' . $extension;
             $filePath = $user_id . '/' . $filename;
 
-            // Hapus foto lama jika ada
-            if (!empty($pencaker['foto_profil_path'])) {
-                $deleteResult = supabaseStorageDelete('profile-pictures', $pencaker['foto_profil_path']);
-                if (!$deleteResult['success']) {
-                    error_log("Gagal menghapus foto lama: " . print_r($deleteResult, true));
-                }
+            // Hapus foto lama jika ada (hanya di mode edit)
+            if ($isEdit && !empty($pencaker['foto_profil_path'])) {
+                supabaseStorageDelete('profile-pictures', $pencaker['foto_profil_path']);
             }
 
             // Upload foto baru
@@ -72,41 +72,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($uploadResult['success']) {
                 $publicUrl = getStoragePublicUrl('profile-pictures', $filePath);
-                $updateData['foto_profil_url'] = $publicUrl;
-                $updateData['foto_profil_path'] = $filePath;
+                $profileData['foto_profil_url'] = $publicUrl;
+                $profileData['foto_profil_path'] = $filePath;
             } else {
                 $error = 'Gagal mengupload foto profil. Silakan coba lagi.';
-
-                // Debug info
-                error_log("Upload error details: " . print_r($uploadResult, true));
-
-                // Tampilkan error yang lebih spesifik
-                if (isset($uploadResult['error']) && !empty($uploadResult['error'])) {
-                    $error .= ' Error: ' . $uploadResult['error'];
-                }
-                if (isset($uploadResult['response'])) {
-                    $responseData = json_decode($uploadResult['response'], true);
-                    if (isset($responseData['error'])) {
-                        $error .= ' Server: ' . $responseData['error'];
-                    }
-                }
             }
         }
     }
 
     // Update data ke database jika tidak ada error
     if (empty($error)) {
-        $result = updatePencakerProfile($pencaker['id_pencaker'], $updateData);
+        if ($isEdit) {
+            // Update data yang sudah ada
+            $result = updatePencakerProfile($pencaker['id_pencaker'], $profileData);
+        } else {
+            // Buat data baru
+            $profileData['id_pengguna'] = $user_id;
+            $profileData['dibuat_pada'] = date('Y-m-d H:i:s');
+            $result = createPencakerProfile($profileData);
+        }
 
         if ($result['success']) {
-            $message = 'Profil berhasil diperbarui!';
+            $message = $isEdit ? 'Profil berhasil diperbarui!' : 'Profil berhasil dibuat!';
             // Refresh data pencaker
             $pencaker = getPencakerByUserId($user_id);
 
             // Update session
             $_SESSION['nama_lengkap'] = $nama_lengkap;
         } else {
-            $error = 'Gagal memperbarui profil. Silakan coba lagi.';
+            $error = $isEdit ? 'Gagal memperbarui profil. Silakan coba lagi.' : 'Gagal membuat profil. Silakan coba lagi.';
         }
     }
 }
@@ -121,11 +115,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Edit Profile - Karirku</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/style.css">
     <style>
-        body {
-            background-color: #f8f9fa;
-        }
-
         .profile-edit-container {
             max-width: 900px;
             margin: 50px auto;
@@ -133,6 +124,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: white;
             border-radius: 20px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .back-arrow {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            color: #2b3940;
+        }
+
+        .back-arrow:hover {
+            background-color: #003399;
+            color: white;
+            border-color: #003399;
+        }
+
+        .profile-image-wrapper {
+            position: relative;
+            width: 150px;
+            margin: 0 auto 20px;
         }
 
         .profile-image-preview {
@@ -140,47 +162,97 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             height: 150px;
             border-radius: 50%;
             object-fit: cover;
-            margin: 0 auto 20px;
             display: block;
             border: 4px solid #f0f0f0;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
         }
 
-        .upload-btn-wrapper {
-            position: relative;
-            overflow: hidden;
-            display: inline-block;
-            width: 100%;
-            margin-bottom: 30px;
-        }
-
-        .upload-btn {
-            border: 2px dashed #003399;
-            color: #003399;
-            background-color: #f8f9ff;
-            padding: 15px 30px;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
+        .add-photo-btn {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            width: 35px;
+            height: 35px;
+            background-color: #003399;
+            border: 3px solid white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
             transition: all 0.3s;
-            width: 100%;
+            box-shadow: 0 2px 8px rgba(0, 51, 153, 0.3);
         }
 
-        .upload-btn:hover {
-            background-color: #003399;
+        .add-photo-btn:hover {
+            background-color: #002266;
+            transform: scale(1.1);
+        }
+
+        .add-photo-btn i {
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .add-photo-btn input[type=file] {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .drag-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 51, 153, 0.95);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            backdrop-filter: blur(10px);
+        }
+
+        .drag-overlay.active {
+            display: flex;
+        }
+
+        .drag-content {
+            text-align: center;
             color: white;
         }
 
-        .upload-btn-wrapper input[type=file] {
-            font-size: 100px;
-            position: absolute;
-            left: 0;
-            top: 0;
-            opacity: 0;
-            cursor: pointer;
-            width: 100%;
-            height: 100%;
+        .drag-content i {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: bounce 1s infinite;
+        }
+
+        .drag-content h3 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .drag-content p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-20px);
+            }
         }
 
         .form-label {
@@ -217,18 +289,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             box-shadow: 0 4px 12px rgba(0, 51, 153, 0.3);
         }
 
-        .btn-secondary {
-            background-color: #6c757d;
-            border: none;
-            padding: 12px 40px;
-            border-radius: 10px;
-            font-weight: 600;
-        }
-
         .page-title {
             color: #003399;
             font-weight: 700;
             margin-bottom: 10px;
+            padding-top: 20px;
         }
 
         .page-subtitle {
@@ -239,10 +304,77 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 
 <body>
+    <!-- Drag and Drop Overlay -->
+    <div class="drag-overlay" id="dragOverlay">
+        <div class="drag-content">
+            <i class="bi bi-cloud-upload"></i>
+            <h3>Lepaskan foto di sini</h3>
+            <p>Format: JPG, PNG, GIF, WEBP. Maksimal: 5MB</p>
+        </div>
+    </div>
+    <!-- Navbar Start -->
+    <nav class="navbar navbar-expand-lg bg-white navbar-light shadow sticky-top p-0">
+        <div class="container-fluid px-4 px-lg-5 d-flex align-items-center justify-content-between">
+            <a href="index.php" class="navbar-brand d-flex align-items-center text-center py-0">
+                <img src="../assets/img/logo.png" alt="Karirku Logo">
+            </a>
+
+            <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse justify-content-between" id="navbarCollapse">
+                <div class="navbar-nav ms-0 mt-1">
+                    <a href="../index.php" class="nav-item nav-link active">Home</a>
+                    <a href="job-list.php" class="nav-item nav-link">Cari Pekerjaan</a>
+                </div>
+
+                <div class="auth-buttons d-flex align-items-center">
+                    <?php if ($isLoggedIn && isset($_SESSION['user_id'])): ?>
+                        <?php
+                        $pencaker = getPencakerByUserId($_SESSION['user_id']);
+                        $fotoProfil = $pencaker['foto_profil_url'] ?? '';
+                        ?>
+                        <div class="dropdown">
+                            <button class="btn user-dropdown dropdown-toggle text-white p-0 border-0 bg-transparent" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="box-shadow: none !important; background-color: white !important;">
+                                <?php if (!empty($fotoProfil)): ?>
+                                    <img src="<?= htmlspecialchars($fotoProfil) ?>" alt="Profile" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;">
+                                <?php else: ?>
+                                    <div class="rounded-circle d-flex align-items-center justify-content-center bg-light text-dark" style="width: 40px; height: 40px;">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                <?php endif; ?>
+                            </button>
+                            <ul class="dropdown-menu" aria-labelledby="userDropdown">
+                                <li><a class="dropdown-item" href="profile.php"><i class="fas fa-user-circle me-2"></i>Profil</a></li>
+                                <li><a class="dropdown-item" href="my-applications.php"><i class="fas fa-briefcase me-2"></i>Lamaran Saya</a></li>
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
+                                <li><a class="dropdown-item text-danger" href="views/logout.php">
+                                        <i class="fas fa-sign-out-alt me-2"></i>Logout
+                                    </a></li>
+                            </ul>
+                        </div>
+                    <?php else: ?>
+                        <a href="register.php" class="btn-register">Register</a>
+                        <a href="login.php" class="btn-login">Login</a>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <!-- Navbar End -->
+
     <div class="container">
         <div class="profile-edit-container">
-            <h2 class="text-center page-title">Edit Profil</h2>
-            <p class="text-center page-subtitle">Perbarui informasi profil Anda</p>
+            <!-- Back Arrow -->
+            <a href="profile.php" class="back-arrow">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+
+            <h2 class="text-center page-title"><?php echo $isEdit ? 'Edit Profil' : 'Lengkapi Profil Anda'; ?></h2>
+            <p class="text-center page-subtitle"><?php echo $isEdit ? 'Perbarui informasi profil Anda' : 'Lengkapi informasi profil Anda untuk mulai mencari pekerjaan'; ?></p>
 
             <?php if ($message): ?>
                 <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -258,20 +390,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             <?php endif; ?>
 
-            <form method="POST" enctype="multipart/form-data">
+            <form method="POST" enctype="multipart/form-data" id="profileForm">
                 <!-- Foto Profil -->
                 <div class="text-center mb-4">
-                    <img src="<?php echo !empty($pencaker['foto_profil_url']) ? htmlspecialchars($pencaker['foto_profil_url']) : '../assets/img/default-avatar.png'; ?>"
-                        alt="Profile"
-                        class="profile-image-preview"
-                        id="imagePreview">
-                    <div class="upload-btn-wrapper">
-                        <button class="upload-btn" type="button">
-                            <i class="bi bi-camera-fill me-2"></i> Pilih Foto Profil
-                        </button>
-                        <input type="file" name="foto_profil" accept="image/*" onchange="previewImage(event)">
+                    <div class="profile-image-wrapper">
+                        <img src="<?php echo !empty($pencaker['foto_profil_url']) ? htmlspecialchars($pencaker['foto_profil_url']) : '../assets/img/default-avatar.png'; ?>"
+                            alt="Profile"
+                            class="profile-image-preview"
+                            id="imagePreview">
+                        <label class="add-photo-btn" title="Pilih foto profil">
+                            <i class="bi bi-plus-lg"></i>
+                            <input type="file" name="foto_profil" accept="image/*" id="fotoInput" onchange="previewImage(event)">
+                        </label>
                     </div>
-                    <small class="text-muted">Format: JPG, PNG, GIF, WEBP. Maksimal: 5MB</small>
+                    <small class="text-muted d-block mt-2">Format: JPG, PNG, GIF, WEBP. Maksimal: 5MB</small>
                 </div>
 
                 <div class="row">
@@ -325,9 +457,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
 
                 <div class="d-flex gap-3 justify-content-end mt-4">
-                    <a href="profile.php" class="btn btn-secondary">
-                        <i class="bi bi-x-circle me-2"></i>Batal
-                    </a>
                     <button type="submit" class="btn btn-primary">
                         <i class="bi bi-check-circle me-2"></i>Simpan Perubahan
                     </button>
@@ -355,6 +484,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     return;
                 }
 
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('imagePreview').src = e.target.result;
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Drag and Drop functionality
+        const dragOverlay = document.getElementById('dragOverlay');
+        const fotoInput = document.getElementById('fotoInput');
+        let dragCounter = 0;
+
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        // Show overlay when dragging
+        ['dragenter', 'dragover'].forEach(eventName => {
+            document.body.addEventListener(eventName, () => {
+                dragCounter++;
+                dragOverlay.classList.add('active');
+            }, false);
+        });
+
+        // Hide overlay when not dragging
+        ['dragleave', 'drop'].forEach(eventName => {
+            document.body.addEventListener(eventName, () => {
+                dragCounter--;
+                if (dragCounter === 0) {
+                    dragOverlay.classList.remove('active');
+                }
+            }, false);
+        });
+
+        // Handle dropped files
+        document.body.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+
+            if (files.length > 0) {
+                const file = files[0];
+
+                // Validasi tipe file
+                const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp'];
+                if (!allowedTypes.includes(file.type)) {
+                    alert('Format file tidak didukung! Gunakan JPG, PNG, GIF, atau WEBP');
+                    return;
+                }
+
+                // Validasi ukuran file
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('Ukuran file terlalu besar! Maksimal 5MB');
+                    return;
+                }
+
+                // Set file to input
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                fotoInput.files = dataTransfer.files;
+
+                // Preview the image
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     document.getElementById('imagePreview').src = e.target.result;

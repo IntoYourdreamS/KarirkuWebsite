@@ -20,13 +20,7 @@ if (!$user) {
 // Ambil data profil dari tabel pencaker
 $pencaker = getPencakerByUserId($user_id);
 
-// Jika belum ada profil pencaker, redirect ke halaman create profile
-if (!$pencaker) {
-    header('Location: create_profile.php');
-    exit;
-}
-
-// Hitung usia dari tanggal lahir
+// Hitung usia dari tanggal lahir (hanya jika profil ada)
 $usia = null;
 if (!empty($pencaker['tanggal_lahir'])) {
     $tanggalLahir = new DateTime($pencaker['tanggal_lahir']);
@@ -81,6 +75,7 @@ if (!empty($pencaker['tanggal_lahir'])) {
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
             margin-bottom: 30px;
             position: relative;
+            text-align: center;
         }
 
         .profile-header {
@@ -115,25 +110,34 @@ if (!empty($pencaker['tanggal_lahir'])) {
             flex: 1;
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 20px 5px;
+            gap: 20px 40px;
+            /* Tambahkan gap horizontal yang lebih besar */
+            text-align: left;
+            /* Pastikan text rata kiri */
         }
 
         .info-item {
             display: flex;
             flex-direction: column;
             gap: 5px;
+            text-align: left;
+            /* Pastikan item rata kiri */
         }
 
         .info-label {
             font-size: 13px;
             color: #6c757d;
             font-weight: 500;
+            text-align: left;
+            /* Label rata kiri */
         }
 
         .info-value {
             font-size: 15px;
             color: #2b3940;
             font-weight: 600;
+            text-align: left;
+            /* Value rata kiri */
         }
 
         .info-value a {
@@ -258,6 +262,33 @@ if (!empty($pencaker['tanggal_lahir'])) {
             color: #003399;
         }
 
+        /* Empty Profile Styles */
+        .empty-profile {
+            text-align: center;
+            padding: 60px 40px;
+        }
+
+        .empty-profile-icon {
+            font-size: 80px;
+            color: #6c757d;
+            margin-bottom: 20px;
+        }
+
+        .empty-profile-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #2b3940;
+            margin-bottom: 10px;
+        }
+
+        /* .empty-profile-text {
+            color: #6c757d;
+            margin-bottom: 30px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        } */
+
         @media (max-width: 992px) {
             .bottom-cards {
                 grid-template-columns: 1fr;
@@ -283,7 +314,7 @@ if (!empty($pencaker['tanggal_lahir'])) {
     <!-- Navbar Start -->
     <nav class="navbar navbar-expand-lg bg-white navbar-light shadow sticky-top p-0">
         <div class="container-fluid px-4 px-lg-5 d-flex align-items-center justify-content-between">
-            <a href="index.php" class="navbar-brand d-flex align-items-center text-center py-0">
+            <a href="../index.php" class="navbar-brand d-flex align-items-center text-center py-0">
                 <img src="../assets/img/logo.png" alt="">
             </a>
 
@@ -297,7 +328,7 @@ if (!empty($pencaker['tanggal_lahir'])) {
                     <a href="job-list.php" class="nav-item nav-link">Cari Pekerjaan</a>
                 </div>
                 <div class="auth-buttons d-flex align-items-center">
-                    <span class="me-3">Halo, <?php echo htmlspecialchars($pencaker['nama_lengkap'] ?? $user['nama_lengkap']); ?></span>
+                    <span class="me-3">Halo, <?php echo htmlspecialchars($user['nama_lengkap']); ?></span>
                     <a href="logout.php" class="btn-login">Logout</a>
                 </div>
             </div>
@@ -306,85 +337,101 @@ if (!empty($pencaker['tanggal_lahir'])) {
     <!-- Navbar End -->
 
     <div class="profile-container">
-        <!-- Main Profile Card -->
-        <div class="profile-card">
-            <i class="bi bi-pencil-square menu-icon" onclick="window.location.href='edit_profile.php'" title="Edit Profile"></i>
+        <?php if (!$pencaker): ?>
+            <!-- Tampilan Profil Kosong -->
+            <div class="profile-card empty-profile">
+                <a href="edit_profile.php"><i class="bi bi-person-plus empty-profile-icon"></i></a>
+                <h2 class="empty-profile-title">Tambahkan Profil</h2>
+                <!-- <p class="empty-profile-text">
+                    Anda belum melengkapi profil. Lengkapi profil Anda untuk mengakses fitur lengkap
+                    dan meningkatkan peluang mendapatkan pekerjaan.
+                </p>
+                <a href="edit_profile.php" class="btn-add-profile">
+                    <i class="bi bi-plus-circle"></i>
+                    Tambahkan Profil
+                </a> -->
+            </div>
+        <?php else: ?>
+            <!-- Tampilan Profil Lengkap -->
+            <div class="profile-card">
+                <i class="bi bi-pencil-square menu-icon" onclick="window.location.href='edit_profile.php'" title="Edit Profile"></i>
 
-            <div class="profile-header">
-                <div class="profile-left">
-                    <img src="<?php echo !empty($pencaker['foto_profil_url']) ? htmlspecialchars($pencaker['foto_profil_url']) : '../assets/img/default-avatar.png'; ?>"
-                        alt="Profile"
-                        class="profile-image">
-                    <h2 class="profile-name">
-                        <?php echo htmlspecialchars($pencaker['nama_lengkap'] ?? 'Nama Belum Diisi'); ?>
-                    </h2>
+                <div class="profile-header">
+                    <div class="profile-left">
+                        <img src="<?php echo !empty($pencaker['foto_profil_url']) ? htmlspecialchars($pencaker['foto_profil_url']) : '../assets/img/default-avatar.png'; ?>"
+                            alt="Profile"
+                            class="profile-image">
+                        <h2 class="profile-name">
+                            <?php echo htmlspecialchars($pencaker['nama_lengkap'] ?? 'Nama Belum Diisi'); ?>
+                        </h2>
+                    </div>
+
+                    <div class="profile-info">
+                        <div class="info-item">
+                            <span class="info-label">Phone</span>
+                            <span class="info-value">
+                                <?php echo htmlspecialchars($pencaker['no_hp'] ?? '-'); ?>
+                            </span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Email</span>
+                            <span class="info-value">
+                                <a href="mailto:<?php echo htmlspecialchars($pencaker['email_pencaker'] ?? $user['email']); ?>">
+                                    <?php echo htmlspecialchars($pencaker['email_pencaker'] ?? $user['email']); ?>
+                                </a>
+                            </span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Lokasi</span>
+                            <span class="info-value">
+                                <?php echo htmlspecialchars($pencaker['alamat'] ?? '-'); ?>
+                            </span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Usia, jenis kelamin</span>
+                            <span class="info-value">
+                                <?php echo $usia ?? '-'; ?>,
+                                <?php
+                                $gender_display = [
+                                    'male' => 'Laki-laki',
+                                    'female' => 'Perempuan',
+                                    'other' => 'Lainnya'
+                                ];
+                                echo htmlspecialchars($gender_display[$pencaker['gender']] ?? '-');
+                                ?>
+                            </span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Tanggal Lahir</span>
+                            <span class="info-value">
+                                <?php
+                                if (!empty($pencaker['tanggal_lahir'])) {
+                                    $date = new DateTime($pencaker['tanggal_lahir']);
+                                    echo $date->format('d F Y');
+                                } else {
+                                    echo '-';
+                                }
+                                ?>
+                            </span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Pengalaman Kerja</span>
+                            <span class="info-value">
+                                <?php echo htmlspecialchars($pencaker['pengalaman_tahun'] ?? '0'); ?> Tahun
+                            </span>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="profile-info">
-                    <div class="info-item">
-                        <span class="info-label">Phone</span>
-                        <span class="info-value">
-                            <?php echo htmlspecialchars($pencaker['no_hp'] ?? '-'); ?>
-                        </span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Email</span>
-                        <span class="info-value">
-                            <a href="mailto:<?php echo htmlspecialchars($pencaker['email_pencaker'] ?? $user['email']); ?>">
-                                <?php echo htmlspecialchars($pencaker['email_pencaker'] ?? $user['email']); ?>
-                            </a>
-                        </span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Lokasi</span>
-                        <span class="info-value">
-                            <?php echo htmlspecialchars($pencaker['alamat'] ?? '-'); ?>
-                        </span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Usia, jenis kelamin</span>
-                        <span class="info-value">
-                            <?php echo $usia ?? '-'; ?>,
-                            <?php
-                            $gender_display = [
-                                'male' => 'Laki-laki',
-                                'female' => 'Perempuan',
-                                'other' => 'Lainnya'
-                            ];
-                            echo htmlspecialchars($gender_display[$pencaker['gender']] ?? '-');
-                            ?>
-                        </span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Tanggal Lahir</span>
-                        <span class="info-value">
-                            <?php
-                            if (!empty($pencaker['tanggal_lahir'])) {
-                                $date = new DateTime($pencaker['tanggal_lahir']);
-                                echo $date->format('d F Y');
-                            } else {
-                                echo '-';
-                            }
-                            ?>
-                        </span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Pengalaman Kerja</span>
-                        <span class="info-value">
-                            <?php echo htmlspecialchars($pencaker['pengalaman_tahun'] ?? '0'); ?> Tahun
-                        </span>
-                    </div>
+                <div class="status-badges">
+                    <div class="badge-custom badge-yellow">Pengajuan (0)</div>
+                    <div class="badge-custom badge-green">Diterima (0)</div>
+                    <div class="badge-custom badge-red">Ditolak (0)</div>
                 </div>
             </div>
+        <?php endif; ?>
 
-            <div class="status-badges">
-                <div class="badge-custom badge-yellow">Pengajuan (0)</div>
-                <div class="badge-custom badge-green">Diterima (0)</div>
-                <div class="badge-custom badge-red">Ditolak (0)</div>
-            </div>
-        </div>
-
-        <!-- Bottom Cards -->
+        <!-- Bottom Cards (Tetap Ditampilkan untuk Kedua Kondisi) -->
         <div class="bottom-cards">
             <!-- Aktivitas Card -->
             <div class="info-card">

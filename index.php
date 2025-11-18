@@ -59,7 +59,7 @@ $userName = $_SESSION['user'] ?? ''; // Pastikan ini 'user' bukan 'user_name'
             border: 2px solid #001f66;
             border-radius: 8px;
             padding: 8px 20px;
-            margin-right: 20px;
+            margin-right: 10px;
             text-decoration: none;
             font-weight: 500;
             transition: all 0.3s;

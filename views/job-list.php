@@ -185,58 +185,58 @@ if (isset($_GET['debug'])) {
     <!-- Spinner End -->
 
     <!-- Navbar Start -->
-        <nav class="navbar navbar-expand-lg bg-white navbar-light shadow sticky-top p-0">
-            <div class="container-fluid px-4 px-lg-5 d-flex align-items-center justify-content-between">
-                <a href="index.php" class="navbar-brand d-flex align-items-center text-center py-0">
-                    <img src="../assets/img/logo.png" alt="Karirku Logo">
-                </a>
+    <nav class="navbar navbar-expand-lg bg-white navbar-light shadow sticky-top p-0">
+        <div class="container-fluid px-4 px-lg-5 d-flex align-items-center justify-content-between">
+            <a href="index.php" class="navbar-brand d-flex align-items-center text-center py-0">
+                <img src="../assets/img/logo.png" alt="Karirku Logo">
+            </a>
 
-                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
+            <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
+                <span class="navbar-toggler-icon"></span>
+            </button>
 
-                <div class="collapse navbar-collapse justify-content-between" id="navbarCollapse">
-                    <div class="navbar-nav ms-0 mt-1">
-                        <a href="../index.php" class="nav-item nav-link active">Home</a>
-                        <a href="job-list.php" class="nav-item nav-link">Cari Pekerjaan</a>
-                    </div>
+            <div class="collapse navbar-collapse justify-content-between" id="navbarCollapse">
+                <div class="navbar-nav ms-0 mt-1">
+                    <a href="../index.php" class="nav-item nav-link active">Home</a>
+                    <a href="job-list.php" class="nav-item nav-link">Cari Pekerjaan</a>
+                </div>
 
-                    <div class="auth-buttons d-flex align-items-center">
-                        <?php if ($isLoggedIn && isset($_SESSION['user_id'])): ?>
-                            <?php
-                            $pencaker = getPencakerByUserId($_SESSION['user_id']);
-                            $fotoProfil = $pencaker['foto_profil_url'] ?? '';
-                            ?>
-                            <div class="dropdown">
-                                <button class="btn user-dropdown dropdown-toggle text-white p-0 border-0 bg-transparent" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="box-shadow: none !important; background-color: white !important;">
-                                    <?php if (!empty($fotoProfil)): ?>
-                                        <img src="<?= htmlspecialchars($fotoProfil) ?>" alt="Profile" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;">
-                                    <?php else: ?>
-                                        <div class="rounded-circle d-flex align-items-center justify-content-center bg-light text-dark" style="width: 40px; height: 40px;">
-                                            <i class="fas fa-user"></i>
-                                        </div>
-                                    <?php endif; ?>
-                                </button>
-                                <ul class="dropdown-menu" aria-labelledby="userDropdown">
-                                    <li><a class="dropdown-item" href="profile.php"><i class="fas fa-user-circle me-2"></i>Profil</a></li>
-                                    <li><a class="dropdown-item" href="my-applications.php"><i class="fas fa-briefcase me-2"></i>Lamaran Saya</a></li>
-                                    <li>
-                                        <hr class="dropdown-divider">
-                                    </li>
-                                    <li><a class="dropdown-item text-danger" href="views/logout.php">
-                                            <i class="fas fa-sign-out-alt me-2"></i>Logout
-                                        </a></li>
-                                </ul>
-                            </div>
-                        <?php else: ?>
-                            <a href="register.php" class="btn-register">Register</a>
-                            <a href="login.php" class="btn-login">Login</a>
-                        <?php endif; ?>
-                    </div>
+                <div class="auth-buttons d-flex align-items-center">
+                    <?php if ($isLoggedIn && isset($_SESSION['user_id'])): ?>
+                        <?php
+                        $pencaker = getPencakerByUserId($_SESSION['user_id']);
+                        $fotoProfil = $pencaker['foto_profil_url'] ?? '';
+                        ?>
+                        <div class="dropdown">
+                            <button class="btn user-dropdown dropdown-toggle text-white p-0 border-0 bg-transparent" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="box-shadow: none !important; background-color: white !important;">
+                                <?php if (!empty($fotoProfil)): ?>
+                                    <img src="<?= htmlspecialchars($fotoProfil) ?>" alt="Profile" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;">
+                                <?php else: ?>
+                                    <div class="rounded-circle d-flex align-items-center justify-content-center bg-light text-dark" style="width: 40px; height: 40px;">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                <?php endif; ?>
+                            </button>
+                            <ul class="dropdown-menu" aria-labelledby="userDropdown">
+                                <li><a class="dropdown-item" href="profile.php"><i class="fas fa-user-circle me-2"></i>Profil</a></li>
+                                <li><a class="dropdown-item" href="my-applications.php"><i class="fas fa-briefcase me-2"></i>Lamaran Saya</a></li>
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
+                                <li><a class="dropdown-item text-danger" href="views/logout.php">
+                                        <i class="fas fa-sign-out-alt me-2"></i>Logout
+                                    </a></li>
+                            </ul>
+                        </div>
+                    <?php else: ?>
+                        <a href="register.php" class="btn-register">Register</a>
+                        <a href="login.php" class="btn-login">Login</a>
+                    <?php endif; ?>
                 </div>
             </div>
-        </nav>
-        <!-- Navbar End -->
+        </div>
+    </nav>
+    <!-- Navbar End -->
 
     <!-- Header End -->
     <div class="container-xxl py-5 bg-dark page-header mb-5">
