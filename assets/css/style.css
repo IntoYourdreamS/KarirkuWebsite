@@ -2,7 +2,7 @@
 :root {
   --primary: #2c4e97;
   --secondary: #2b9bff;
-  --light: #effdf5;
+  --light: #ffffff !important;
   --dark: #2b3940;
 }
 

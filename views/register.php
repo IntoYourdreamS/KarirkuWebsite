@@ -1,66 +1,16 @@
 <?php
 session_start();
-require __DIR__ . '/../config/supabase.php';
-
-$error = '';
-$success = '';
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $nama_lengkap = $_POST['nama_lengkap'] ?? '';
-    $email = $_POST['email'] ?? '';
-    $password = $_POST['password'] ?? '';
-    $confirm_password = $_POST['confirm_password'] ?? '';
-    $no_hp = $_POST['no_hp'] ?? '';
-
-    // Validasi
-    if (empty($nama_lengkap) || empty($email) || empty($password) || empty($confirm_password)) {
-        $error = 'Semua field wajib diisi!';
-    } elseif ($password !== $confirm_password) {
-        $error = 'Password dan konfirmasi password tidak cocok!';
-    } elseif (strlen($password) < 6) {
-        $error = 'Password minimal 6 karakter!';
-    } else {
-        // Cek apakah email sudah terdaftar
-        $checkEmail = supabaseQuery($client, 'pengguna', [
-            'select' => 'email',
-            'email' => 'eq.' . $email
-        ]);
-
-        if ($checkEmail['success'] && !empty($checkEmail['data'])) {
-            $error = 'Email sudah terdaftar!';
-        } else {
-            // Hash password
-            $password_hash = password_hash($password, PASSWORD_DEFAULT);
-
-            // Data untuk insert - SESUAI STRUCTURE DATABASE
-            $userData = [
-                'nama_lengkap' => $nama_lengkap,
-                'email' => $email,
-                'password_hash' => $password_hash,
-                'no_hp' => $no_hp,
-                'role' => 'user' // default role
-            ];
-
-            $result = supabaseInsert($client, 'pengguna', $userData);
-
-            if ($result['success']) {
-                $success = 'Registrasi berhasil! Silakan login.';
-                // Reset form
-                $_POST = [];
-            } else {
-                $error = 'Terjadi kesalahan saat registrasi: ' . ($result['error'] ?? 'Unknown error');
-            }
-        }
-    }
+if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
+    header('Location: ../index.php');
+    exit;
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="utf-8">
-    <title>Daftar - KaririKu</title>
+    <title>Register - Karirku</title>
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <meta content="" name="keywords">
     <meta content="" name="description">
@@ -77,127 +27,267 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css" rel="stylesheet">
 
+    <!-- Libraries Stylesheet -->
+    <link href="../assets/lib/animate/animate.min.css" rel="stylesheet">
+    <link href="../assets/lib/owlcarousel/assets/owl.carousel.min.css" rel="stylesheet">
+
     <!-- Customized Bootstrap Stylesheet -->
     <link href="../assets/css/bootstrap.min.css" rel="stylesheet">
 
     <!-- Template Stylesheet -->
     <link href="../assets/css/auth.css" rel="stylesheet">
+    <link href="../assets/css/style.css" rel="stylesheet">
 
+    <!-- Login Page Styles -->
     <style>
-        
+        .login-container {
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: url("../assets/img/background-login.png") center center no-repeat;
+            background-size: cover;
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .intro-text h1 {
+            color: #002E92;
+            font-size: 2rem;
+            font-weight: 600;
+            line-height: 1.4;
+            max-width: 700px;
+        }
+
+        .login-card1 {
+            background: white;
+            border-radius: 32px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 400px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            margin-top: -15px;
+        }
+
+        .login-card2 {
+            background: white;
+            border-radius: 32px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 400px;
+            overflow: hidden;
+        }
+
+        .btn-text {
+            margin-left: 20px;
+            color: #8D92A0;
+            font-weight: 600;
+            line-height: 1.4;
+            font-size: 16px;
+        }
+
+        .btn-google {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 2px 6px;
+            border: 1px solid #ddd;
+            border-radius: 32px;
+            background: white;
+            font-weight: 500;
+            color: #333;
+            transition: all 0.3s;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .btn-google:hover {
+            background: #f5f5f5;
+        }
+
+        .btn-google img {
+            width: 55px;
+            height: 55px;
+            margin: 0;
+        }
+
+        .login-title {
+            color: #002E92;
+        }
+
+        .btn-login-primary {
+            background-color: #001f66;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 32px;
+            font-weight: 500;
+            width: 141px;
+            transition: background-color 0.3s;
+        }
+
+        .login-card2 .btn-google {
+            margin-bottom: 0;
+            border-radius: 32px;
+        }
+
+        .login-card2 {
+            padding: 0;
+        }
+
+        .span-text h1 {
+            color: #8D92A0;
+            font-size: 18px;
+            font-weight: 600;
+            line-height: 1.4;
+            margin-top: 12px;
+            font-size: 15px;
+        }
+
+        .btn-daftar-primary {
+            display: inline-block;
+            text-align: center;
+            text-decoration: none;
+            background-color: #001f66;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 32px;
+            font-weight: 500;
+            width: 350px;
+            transition: background-color 0.3s;
+            margin-top: 2px;
+            cursor: pointer;
+        }
+
+        .btn-daftar-primary:hover {
+            background-color: #002c99;
+            color: white;
+            text-decoration: none;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 5px;
+            border: none;
+            border-bottom: 1px solid #ccc;
+            border-radius: 0;
+            background: transparent;
+            font-size: 14px;
+            color: #333;
+            transition: border-color 0.3s;
+        }
+
+        .form-control input {
+            font-size: 20px;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-bottom: 1px solid #001f66;
+            box-shadow: none;
+        }
     </style>
 </head>
 
 <body>
-    <div class="auth-container">
-        <div class="auth-card">
-            <div class="auth-header">
-                <div class="logo-container">
-                    <img src="../assets/img/logo.png" alt="KaririKu Logo">
+    <!-- Navbar Start -->
+    <nav class="navbar navbar-expand-lg bg-white navbar-light shadow sticky-top p-0">
+        <div class="container-fluid px-4 px-lg-5 d-flex align-items-center justify-content-between">
+            <a href="index.php" class="navbar-brand d-flex align-items-center text-center py-0">
+                <img src="../assets/img/logo.png" alt="">
+            </a>
+
+            <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse justify-content-between" id="navbarCollapse">
+                <div class="navbar-nav ms-0 mt-1">
+                    <a href="../index.php" class="nav-item nav-link active">Home</a>
+                    <a href="job-list.php" class="nav-item nav-link">Cari Pekerjaan</a>
                 </div>
-                <h2>Buat Akun Baru</h2>
-                <p>Bergabung dengan KaririKu hari ini</p>
-            </div>
-
-            <div class="auth-body">
-                <?php if ($error): ?>
-                    <div class="alert alert-error">
-                        <i class="fas fa-exclamation-circle me-2"></i><?= htmlspecialchars($error) ?>
-                    </div>
-                <?php endif; ?>
-
-                <?php if ($success): ?>
-                    <div class="alert alert-success">
-                        <i class="fas fa-check-circle me-2"></i><?= htmlspecialchars($success) ?>
-                    </div>
-                <?php endif; ?>
-
-                <form method="POST" action="">
-                    <div class="form-group">
-                        <label class="form-label" for="nama_lengkap">Nama Lengkap</label>
-                        <input type="text" class="form-control" id="nama_lengkap" name="nama_lengkap"
-                            placeholder="Masukkan nama lengkap Anda"
-                            value="<?= htmlspecialchars($_POST['nama_lengkap'] ?? '') ?>" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label" for="email">Email</label>
-                        <input type="email" class="form-control" id="email" name="email"
-                            placeholder="Masukkan email Anda"
-                            value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label" for="no_hp">Nomor Handphone</label>
-                        <input type="tel" class="form-control" id="no_hp" name="no_hp"
-                            placeholder="Masukkan nomor handphone"
-                            value="<?= htmlspecialchars($_POST['no_hp'] ?? '') ?>">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label" for="password">Password</label>
-                        <input type="password" class="form-control" id="password" name="password"
-                            placeholder="Buat password minimal 6 karakter" required minlength="6">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label" for="confirm_password">Konfirmasi Password</label>
-                        <input type="password" class="form-control" id="confirm_password" name="confirm_password"
-                            placeholder="Ulangi password Anda" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-check" style="display: flex; align-items: flex-start; gap: 10px;">
-                            <input type="checkbox" required style="margin-top: 3px;">
-                            <span style="font-size: 14px; color: #666;">
-                                Saya menyetujui <a href="#" style="color: #001f66;">Syarat & Ketentuan</a> dan <a href="#" style="color: #001f66;">Kebijakan Privasi</a>
-                            </span>
-                        </label>
-                    </div>
-
-                    <button type="submit" class="btn-auth">
-                        <i class="fas fa-user-plus me-2"></i>Daftar
-                    </button>
-                </form>
-
-                <div class="divider">
-                    <span>Atau daftar dengan</span>
-                </div>
-
-                <button class="btn-google" type="button">
-                    <i class="fab fa-google"></i>
-                    Google
-                </button>
-
-                <div class="auth-footer">
-                    <p>Sudah punya akun? <a href="login.php">Masuk di sini</a></p>
+                <div class="auth-buttons d-flex align-items-center">
+                    <a href="register.php" class="btn-register">Register</a>
+                    <a href="login.php" class="btn-login">Login</a>
                 </div>
             </div>
         </div>
+    </nav>
+    <!-- Login Container Start -->
+    <div class="login-container">
+        <div class="intro-text">
+            <h1>Gabung di Karirku</h1>
+        </div>
+        <div class="login-card1">
+            <div class="login-body">
+                <h4 class="login-title"><img src="../assets/img/karirkulogo.png" alt="" style="width: 40px;"> Register</h4>
+                <!-- Ganti action form dan tambahkan input hidden -->
+                <form action="auth-process.php" method="POST">
+                    <input type="hidden" name="action" value="register">
+
+                    <div class="form-group">
+                        <input type="text" id="username" name="username" class="form-control" required placeholder="Nama Pengguna">
+                    </div>
+
+                    <div class="form-group">
+                        <input type="email" id="email" name="email" class="form-control" required placeholder="Email">
+                    </div>
+
+                    <div class="form-group">
+                        <input type="password" id="password" name="password" class="form-control" required placeholder="Kata sandi">
+                    </div>
+
+                    <button type="submit" class="btn-login-primary">Daftar</button>
+                </form>
+
+                <!-- Tambahkan pesan error jika ada -->
+                <?php if (isset($_SESSION['error'])): ?>
+                    <div class="alert alert-danger mt-3">
+                        <?php
+                        echo $_SESSION['error'];
+                        unset($_SESSION['error']);
+                        ?>
+                    </div>
+                <?php endif; ?>
+                
+                <?php if (isset($_GET['error'])): ?>
+                    <div class="alert alert-danger mt-3">
+                        <?php echo htmlspecialchars($_GET['error']); ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+        <div class="login-card2">
+            <a href="google-auth.php" class="btn-google">
+                <span class="btn-text">Pilih akun google</span>
+                <span class="btn-icon">
+                    <img src="../assets/img/icon-google2.png" alt="">
+                </span>
+            </a>
+        </div>
+        <div class="span-text">
+            <h1>Sudah punya akun? klik Login</h1>
+        </div>
+        <a href="login.php" class="btn-daftar-primary" style="display: inline-block; text-align: center; text-decoration: none;">
+            Login
+        </a>
     </div>
+    <!-- Login Container End -->
 
     <!-- JavaScript Libraries -->
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../assets/lib/wow/wow.min.js"></script>
+    <script src="../assets/lib/easing/easing.min.js"></script>
+    <script src="../assets/lib/waypoints/waypoints.min.js"></script>
 
-    <script>
-        // Validasi konfirmasi password
-        document.addEventListener('DOMContentLoaded', function() {
-            const password = document.getElementById('password');
-            const confirmPassword = document.getElementById('confirm_password');
-
-            function validatePassword() {
-                if (password.value !== confirmPassword.value) {
-                    confirmPassword.setCustomValidity('Password tidak cocok');
-                } else {
-                    confirmPassword.setCustomValidity('');
-                }
-            }
-
-            password.addEventListener('change', validatePassword);
-            confirmPassword.addEventListener('keyup', validatePassword);
-        });
-    </script>
+    <!-- Template Javascript -->
+    <script src="../assets/js/main.js"></script>
 </body>
 
 </html>
