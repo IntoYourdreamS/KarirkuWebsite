@@ -11,88 +11,23 @@ class ComposerStaticInitbd4bffdb25d75e8ebcd6ef07ae874788
         'c964ee0ededf28c96ebd9db5099ef910' => __DIR__ . '/..' . '/guzzlehttp/promises/src/functions_include.php',
         '6e3fae29631ef280660b3cdad06f25a8' => __DIR__ . '/..' . '/symfony/deprecation-contracts/function.php',
         '37a3dc5111fe8f707ab4c132ef1dbc62' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/functions_include.php',
-        '320cde22f66dd4f5d3fd621d3e88b98f' => __DIR__ . '/..' . '/symfony/polyfill-ctype/bootstrap.php',
-        '0e6d7bf4a5811bfa5cf40c5ccd6fae6a' => __DIR__ . '/..' . '/symfony/polyfill-mbstring/bootstrap.php',
-        'a4a119a56e50fbb293281d9a48007e0e' => __DIR__ . '/..' . '/symfony/polyfill-php80/bootstrap.php',
     );
 
     public static $prefixLengthsPsr4 = array (
-        'S' => 
-        array (
-            'Symfony\\Polyfill\\Php80\\' => 23,
-            'Symfony\\Polyfill\\Mbstring\\' => 26,
-            'Symfony\\Polyfill\\Ctype\\' => 23,
-            'Supabase\\Storage\\' => 17,
-            'Supabase\\Postgrest\\' => 19,
-            'Supabase\\Functions\\' => 19,
-            'Supabase\\' => 9,
-            'Spatie\\Url\\' => 11,
-            'Spatie\\Macroable\\' => 17,
-        ),
         'P' => 
         array (
             'Psr\\Http\\Message\\' => 17,
             'Psr\\Http\\Client\\' => 16,
-            'PhpOption\\' => 10,
-        ),
-        'L' => 
-        array (
-            'League\\Uri\\' => 11,
         ),
         'G' => 
         array (
             'GuzzleHttp\\Psr7\\' => 16,
             'GuzzleHttp\\Promise\\' => 19,
             'GuzzleHttp\\' => 11,
-            'GrahamCampbell\\ResultType\\' => 26,
-        ),
-        'D' => 
-        array (
-            'Dotenv\\' => 7,
-        ),
-        'B' => 
-        array (
-            'Bayfront\\MimeTypes\\' => 19,
         ),
     );
 
     public static $prefixDirsPsr4 = array (
-        'Symfony\\Polyfill\\Php80\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/symfony/polyfill-php80',
-        ),
-        'Symfony\\Polyfill\\Mbstring\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/symfony/polyfill-mbstring',
-        ),
-        'Symfony\\Polyfill\\Ctype\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/symfony/polyfill-ctype',
-        ),
-        'Supabase\\Storage\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/supabase/storage-php/src',
-        ),
-        'Supabase\\Postgrest\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/supabase/postgrest-php/src',
-        ),
-        'Supabase\\Functions\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/supabase/functions-php/src',
-        ),
-        'Supabase\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/supabase/supabase-php/src',
-        ),
-        'Spatie\\Url\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/spatie/url/src',
-        ),
-        'Spatie\\Macroable\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/spatie/macroable/src',
-        ),
         'Psr\\Http\\Message\\' => 
         array (
             0 => __DIR__ . '/..' . '/psr/http-factory/src',
@@ -101,15 +36,6 @@ class ComposerStaticInitbd4bffdb25d75e8ebcd6ef07ae874788
         'Psr\\Http\\Client\\' => 
         array (
             0 => __DIR__ . '/..' . '/psr/http-client/src',
-        ),
-        'PhpOption\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/phpoption/phpoption/src/PhpOption',
-        ),
-        'League\\Uri\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/league/uri/src',
-            1 => __DIR__ . '/..' . '/league/uri-interfaces/src',
         ),
         'GuzzleHttp\\Psr7\\' => 
         array (
@@ -123,34 +49,10 @@ class ComposerStaticInitbd4bffdb25d75e8ebcd6ef07ae874788
         array (
             0 => __DIR__ . '/..' . '/guzzlehttp/guzzle/src',
         ),
-        'GrahamCampbell\\ResultType\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/graham-campbell/result-type/src',
-        ),
-        'Dotenv\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/vlucas/phpdotenv/src',
-        ),
-        'Bayfront\\MimeTypes\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/bayfrontmedia/php-mime-types/src',
-        ),
-    );
-
-    public static $fallbackDirsPsr0 = array (
-        0 => __DIR__ . '/..' . '/supabase/functions-php/src',
-        1 => __DIR__ . '/..' . '/supabase/postgrest-php/src',
-        2 => __DIR__ . '/..' . '/supabase/storage-php/src',
-        3 => __DIR__ . '/..' . '/supabase/supabase-php/src',
     );
 
     public static $classMap = array (
-        'Attribute' => __DIR__ . '/..' . '/symfony/polyfill-php80/Resources/stubs/Attribute.php',
         'Composer\\InstalledVersions' => __DIR__ . '/..' . '/composer/InstalledVersions.php',
-        'PhpToken' => __DIR__ . '/..' . '/symfony/polyfill-php80/Resources/stubs/PhpToken.php',
-        'Stringable' => __DIR__ . '/..' . '/symfony/polyfill-php80/Resources/stubs/Stringable.php',
-        'UnhandledMatchError' => __DIR__ . '/..' . '/symfony/polyfill-php80/Resources/stubs/UnhandledMatchError.php',
-        'ValueError' => __DIR__ . '/..' . '/symfony/polyfill-php80/Resources/stubs/ValueError.php',
     );
 
     public static function getInitializer(ClassLoader $loader)
@@ -158,7 +60,6 @@ class ComposerStaticInitbd4bffdb25d75e8ebcd6ef07ae874788
         return \Closure::bind(function () use ($loader) {
             $loader->prefixLengthsPsr4 = ComposerStaticInitbd4bffdb25d75e8ebcd6ef07ae874788::$prefixLengthsPsr4;
             $loader->prefixDirsPsr4 = ComposerStaticInitbd4bffdb25d75e8ebcd6ef07ae874788::$prefixDirsPsr4;
-            $loader->fallbackDirsPsr0 = ComposerStaticInitbd4bffdb25d75e8ebcd6ef07ae874788::$fallbackDirsPsr0;
             $loader->classMap = ComposerStaticInitbd4bffdb25d75e8ebcd6ef07ae874788::$classMap;
 
         }, null, ClassLoader::class);

@@ -1,7 +1,5 @@
 {
     "require": {
-        "supabase/supabase-php": "^0.0.1",
-        "supabase/postgrest-php": "^0.0.4",
-        "guzzlehttp/guzzle": "^7.5"
+        "supabase/supabase-php": "^0.0.3"
     }
 }
