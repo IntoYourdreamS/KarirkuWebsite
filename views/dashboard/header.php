@@ -14,7 +14,7 @@
       background-color: #f8f9fa;
       font-family: "Inter", sans-serif;
       font-optical-sizing: auto;
-      font-weight: <weight>;
+      font-weight: weight;
       font-style: normal;
       /* 1. BERI JARAK DARI ATAS se-tinggi topbar */
       padding-top: 70px;
