@@ -1,6 +1,6 @@
 <?php
 $supabase_url = 'https://tkjnbelcgfwpbhppsnrl.supabase.co';
-$supabase_key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRram5iZWxjZ2Z3cGJocHBzbnJsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTc0MDc2MiwiZXhwIjoyMDc3MzE2NzYyfQ.vZoNXxMWtoG4ktg7K6Whqv8EFzCv7qbS3OAHEfxVoR0';
+$supabase_key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRram5iZWxjZ2Z3cGJocHBzbnJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3NDA3NjIsImV4cCI6MjA3NzMxNjc2Mn0.wOjK4X2qJV6LzOG4yXxnfeTezDX5_3Sb3wezhCuQAko';
 function supabaseQuery($table, $params = [], $options = [])
 {
     global $supabase_url, $supabase_key;
@@ -340,4 +340,30 @@ function getStoragePublicUrl($bucket, $path)
 {
     global $supabase_url;
     return $supabase_url . '/storage/v1/object/public/' . $bucket . '/' . $path;
+}
+
+// Fungsi untuk ambil lowongan dengan detail perusahaan
+function getLowonganWithPerusahaan() {
+    $lowongan = supabaseQuery('lowongan', ['select' => '*']);
+    $perusahaan = supabaseQuery('perusahaan', ['select' => '*']);
+    
+    // Lakukan join manual di PHP
+    foreach ($lowongan['data'] as &$low) {
+        foreach ($perusahaan['data'] as $per) {
+            if ($low['id_perusahaan'] == $per['id_perusahaan']) {
+                $low['perusahaan'] = $per;
+                break;
+            }
+        }
+    }
+    
+    return $lowongan;
+}
+
+// Fungsi untuk pencarian lowongan
+function searchLowongan($keyword) {
+    return supabaseQuery('lowongan', [
+        'select' => '*',
+        'judul' => 'ilike.%' . $keyword . '%'
+    ]);
 }
