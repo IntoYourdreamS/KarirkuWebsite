@@ -21,11 +21,24 @@ if (!$result['success'] || empty($result['data'])) {
 
 $lowongan = $result['data'];
 
+// Ambil data perusahaan berdasarkan id_perusahaan dari lowongan
+require_once __DIR__ . '/../function/supabase.php';
+$perusahaanResult = supabaseQuery('perusahaan', [
+    'select' => 'nama_perusahaan, logo_url, deskripsi, website, lokasi, no_telp, email',
+    'id_perusahaan' => 'eq.' . $lowongan['id_perusahaan']
+]);
+
+$perusahaan = [];
+if ($perusahaanResult['success'] && !empty($perusahaanResult['data'])) {
+    $perusahaan = $perusahaanResult['data'][0];
+}
+
 $data = formatLowongan($lowongan);
 
 $kualifikasi_list = parseKualifikasi($data['kualifikasi']);
 $benefit_list = parseBenefit($data['benefit']);
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -58,9 +71,60 @@ $benefit_list = parseBenefit($data['benefit']);
     <!-- Template Stylesheet -->
     <link href="../assets/css/style.css" rel="stylesheet">
     <style>
+        /* Perbaikan alignment dropdown user */
+        .auth-buttons {
+            display: flex;
+            align-items: center;
+            height: 100%;
+        }
+
+        .user-dropdown {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            padding: 0;
+            margin: 0;
+        }
+
+        .user-dropdown img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .user-dropdown .fa-user {
+            font-size: 18px;
+        }
+
+        /* Pastikan dropdown menu juga sejajar */
         .dropdown-menu {
             left: auto !important;
             right: 0 !important;
+            top: 100% !important;
+            margin-top: 8px !important;
+        }
+
+        /* Perbaikan untuk ikon default */
+        .rounded-circle.bg-light {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+        }
+
+        /* Pastikan navbar items vertikal center */
+        .navbar-nav {
+            display: flex;
+            align-items: center;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
         }
 
         .user-dropdown:focus,
@@ -68,6 +132,40 @@ $benefit_list = parseBenefit($data['benefit']);
             border: none !important;
             outline: none !important;
             box-shadow: none !important;
+        }
+
+        .company-logo {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            object-position: center;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 2px;
+            background: white;
+        }
+
+        .company-detail-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 25px;
+        }
+
+        .company-info-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .company-info-item i {
+            color: #001f66;
+            width: 20px;
+            margin-right: 10px;
+            margin-top: 4px;
+        }
+
+        .company-info-content {
+            flex: 1;
         }
     </style>
 </head>
@@ -81,7 +179,6 @@ $benefit_list = parseBenefit($data['benefit']);
             </div>
         </div>
         <!-- Spinner End -->
-
 
         <!-- Navbar Start -->
         <nav class="navbar navbar-expand-lg bg-white navbar-light shadow sticky-top p-0">
@@ -137,7 +234,6 @@ $benefit_list = parseBenefit($data['benefit']);
         </nav>
         <!-- Navbar End -->
 
-
         <!-- Header End -->
         <div class="container-xxl py-5 bg-dark page-header mb-5">
             <div class="container my-5 pt-5 pb-4">
@@ -153,14 +249,17 @@ $benefit_list = parseBenefit($data['benefit']);
         </div>
         <!-- Header End -->
 
-
         <!-- Job Detail Start -->
         <div class="container-xxl py-5 wow fadeInUp" data-wow-delay="0.1s">
             <div class="container">
                 <div class="row gy-5 gx-4">
                     <div class="col-lg-8">
                         <div class="d-flex align-items-center mb-5">
-                            <img class="flex-shrink-0 img-fluid border rounded" src="../assets/img/com-logo-2.jpg" alt="" style="width: 80px; height: 80px;">
+                            <?php if (!empty($perusahaan['logo_url'])): ?>
+                                <img class="flex-shrink-0 img-fluid border rounded company-logo" src="<?= htmlspecialchars($perusahaan['logo_url']) ?>" alt="<?= htmlspecialchars($perusahaan['nama_perusahaan'] ?? 'Company Logo') ?>">
+                            <?php else: ?>
+                                <img class="flex-shrink-0 img-fluid border rounded company-logo" src="../assets/img/com-logo-2.jpg" alt="Default Company Logo">
+                            <?php endif; ?>
                             <div class="text-start ps-4">
                                 <h3 class="mb-3"><?= htmlspecialchars($data['judul']) ?></h3>
                                 <span class="text-truncate me-3"><i class="fa fa-map-marker-alt text-primary me-2"></i><?= htmlspecialchars($data['lokasi']) ?></span>
@@ -195,31 +294,65 @@ $benefit_list = parseBenefit($data['benefit']);
                                 <p><?= htmlspecialchars($data['benefit']) ?></p>
                             <?php endif; ?>
                         </div>
+                        <!-- Tambahkan di bagian setelah job summary, sebelum company detail -->
+                        <div class="bg-light rounded p-5 mb-4 wow slideInUp" data-wow-delay="0.1s">
+                            <h4 class="mb-4">Apply For This Job</h4>
+                            <?php if ($isLoggedIn && $_SESSION['role'] === 'pencaker'): ?>
+                                <?php
+                                // Ambil data pencaker
+                                $pencaker = getPencakerByUserId($_SESSION['user_id']);
 
-                        <div class="">
-                            <h4 class="mb-4">Apply For The Job</h4>
-                            <form>
-                                <div class="row g-3">
-                                    <div class="col-12 col-sm-6">
-                                        <input type="text" class="form-control" placeholder="Your Name" disabled>
+                                // Cek apakah sudah apply
+                                $alreadyApplied = false;
+                                if ($pencaker) {
+                                    $checkApply = supabaseQuery('lamaran', [
+                                        'select' => 'id_lamaran',
+                                        'id_lowongan' => 'eq.' . $id_lowongan,
+                                        'id_pencaker' => 'eq.' . $pencaker['id_pencaker']
+                                    ]);
+                                    $alreadyApplied = $checkApply['success'] && count($checkApply['data']) > 0;
+
+                                    // CEK CV DARI TABLE CV (bukan dari pencaker)
+                                    $checkCV = supabaseQuery('cv', [
+                                        'select' => 'id_cv, cv_url',
+                                        'id_pencaker' => 'eq.' . $pencaker['id_pencaker'],
+                                        'order' => 'uploaded_at.desc',
+                                        'limit' => 1
+                                    ]);
+                                    $hasCV = $checkCV['success'] && count($checkCV['data']) > 0;
+                                }
+                                ?>
+
+                                <?php if ($alreadyApplied): ?>
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-check-circle me-2"></i>
+                                        Anda sudah mengirim lamaran untuk lowongan ini.
                                     </div>
-                                    <div class="col-12 col-sm-6">
-                                        <input type="email" class="form-control" placeholder="Your Email" disabled>
-                                    </div>
-                                    <div class="col-12 col-sm-6">
-                                        <input type="text" class="form-control" placeholder="Portfolio Website" disabled>
-                                    </div>
-                                    <div class="col-12 col-sm-6">
-                                        <input type="file" class="form-control bg-white" disabled>
-                                    </div>
-                                    <div class="col-12">
-                                        <textarea class="form-control" rows="5" placeholder="Coverletter" disabled></textarea>
-                                    </div>
-                                    <div class="col-12">
-                                        <button class="btn btn-secondary w-100" type="button" disabled>Fitur Sedang Dikembangkan</button>
-                                    </div>
+                                    <a href="profile.php" class="btn btn-primary w-100">Lihat Lamaran Saya</a>
+                                <?php else: ?>
+                                    <?php if ($hasCV): ?>
+                                        <!-- Jika memiliki CV, tampilkan tombol Apply Now -->
+                                        <a href="apply-job.php?id=<?= $id_lowongan ?>" class="btn btn-primary w-100 btn-lg">
+                                            <i class="fas fa-paper-plane me-2"></i>Apply Now
+                                        </a>
+                                    <?php else: ?>
+                                        <!-- Jika tidak memiliki CV, tampilkan tombol Lengkapi Identitas -->
+                                        <div class="alert alert-warning">
+                                            <i class="fas fa-exclamation-triangle me-2"></i>
+                                            Anda belum memiliki CV. Silakan lengkapi identitas terlebih dahulu.
+                                        </div>
+                                        <a href="profile.php" class="btn btn-warning w-100 btn-lg">
+                                            <i class="fas fa-user-edit me-2"></i>Lengkapi Identitas
+                                        </a>
+                                    <?php endif; ?>
+                                <?php endif; ?>
+                            <?php else: ?>
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    Silakan login sebagai pencaker untuk mengirim lamaran.
                                 </div>
-                            </form>
+                                <a href="login.php" class="btn btn-outline-primary w-100">Login</a>
+                            <?php endif; ?>
                         </div>
                     </div>
 
@@ -234,16 +367,84 @@ $benefit_list = parseBenefit($data['benefit']);
                             <p><i class="fa fa-angle-right text-primary me-2"></i>Mode Kerja: <?= htmlspecialchars($data['mode_kerja']) ?></p>
                             <p class="m-0"><i class="fa fa-angle-right text-primary me-2"></i>Date Line: <?= htmlspecialchars($data['batas_tanggal']) ?></p>
                         </div>
-                        <div class="bg-light rounded p-5 wow slideInUp" data-wow-delay="0.1s">
+
+                        <!-- Company Detail Section -->
+                        <div class="company-detail-section wow slideInUp" data-wow-delay="0.1s">
                             <h4 class="mb-4">Company Detail</h4>
-                            <p class="m-0">Informasi lebih lanjut tentang perusahaan akan ditampilkan di sini. Silakan hubungi kami untuk detail lebih lanjut mengenai perusahaan pemberi kerja.</p>
+
+                            <?php if (!empty($perusahaan)): ?>
+                                <!-- Nama Perusahaan -->
+                                <div class="company-info-item">
+                                    <i class="fas fa-building"></i>
+                                    <div class="company-info-content">
+                                        <strong>Nama Perusahaan:</strong><br>
+                                        <?= htmlspecialchars($perusahaan['nama_perusahaan'] ?? 'Tidak tersedia') ?>
+                                    </div>
+                                </div>
+
+                                <!-- Deskripsi Perusahaan -->
+                                <?php if (!empty($perusahaan['deskripsi'])): ?>
+                                    <div class="company-info-item">
+                                        <i class="fas fa-info-circle"></i>
+                                        <div class="company-info-content">
+                                            <strong>Deskripsi:</strong><br>
+                                            <?= htmlspecialchars($perusahaan['deskripsi']) ?>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+
+                                <!-- Lokasi Perusahaan -->
+                                <?php if (!empty($perusahaan['lokasi'])): ?>
+                                    <div class="company-info-item">
+                                        <i class="fas fa-map-marker-alt"></i>
+                                        <div class="company-info-content">
+                                            <strong>Lokasi:</strong><br>
+                                            <?= htmlspecialchars($perusahaan['lokasi']) ?>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+
+                                <!-- Website -->
+                                <?php if (!empty($perusahaan['website'])): ?>
+                                    <div class="company-info-item">
+                                        <i class="fas fa-globe"></i>
+                                        <div class="company-info-content">
+                                            <strong>Website:</strong><br>
+                                            <a href="<?= htmlspecialchars($perusahaan['website']) ?>" target="_blank" class="text-primary">
+                                                <?= htmlspecialchars($perusahaan['website']) ?>
+                                            </a>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+
+                                <!-- Kontak -->
+                                <?php if (!empty($perusahaan['no_telp']) || !empty($perusahaan['email'])): ?>
+                                    <div class="company-info-item">
+                                        <i class="fas fa-phone"></i>
+                                        <div class="company-info-content">
+                                            <strong>Kontak:</strong><br>
+                                            <?php if (!empty($perusahaan['no_telp'])): ?>
+                                                Telp: <?= htmlspecialchars($perusahaan['no_telp']) ?><br>
+                                            <?php endif; ?>
+                                            <?php if (!empty($perusahaan['email'])): ?>
+                                                Email: <?= htmlspecialchars($perusahaan['email']) ?>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+
+                            <?php else: ?>
+                                <div class="text-center text-muted">
+                                    <i class="fas fa-building fa-2x mb-3"></i>
+                                    <p>Informasi perusahaan tidak tersedia</p>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
         <!-- Job Detail End -->
-
 
         <!-- Footer Start -->
         <div class="container-fluid bg-dark text-white-50 footer pt-5 mt-5 wow fadeIn" data-wow-delay="0.1s">
@@ -309,7 +510,6 @@ $benefit_list = parseBenefit($data['benefit']);
             </div>
         </div>
         <!-- Footer End -->
-
 
         <!-- Back to Top -->
         <a href="#" class="btn btn-lg btn-primary btn-lg-square back-to-top"><i class="bi bi-arrow-up"></i></a>

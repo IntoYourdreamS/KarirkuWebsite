@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'email_pencaker' => $email_pencaker,
         'no_hp' => $no_hp,
         'alamat' => $alamat,
-        'tanggal_lahir' => $tanggal_lahir, // Sekarang akan NULL jika kosong
+        'tanggal_lahir' => $tanggal_lahir,
         'gender' => $gender,
         'pengalaman_tahun' => (int)$pengalaman_tahun,
         'dibuat_pada' => date('Y-m-d H:i:s')

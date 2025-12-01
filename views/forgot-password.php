@@ -1,16 +1,10 @@
 <?php
 session_start();
 
-// Jika user sudah login dan role-nya perusahaan, redirect ke login perusahaan
+// Jika user sudah login, redirect ke index
 if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
-    if (isset($_SESSION['role']) && $_SESSION['role'] === 'perusahaan') {
-        $_SESSION['error'] = "Akun anda adalah akun perusahaan";
-        header('Refresh: 1; url=../company/login.php');
-        exit;
-    } else {
-        header('Location: ../index.php');
-        exit;
-    }
+    header('Location: ../index.php');
+    exit;
 }
 ?>
 <!DOCTYPE html>
@@ -18,7 +12,7 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
 
 <head>
     <meta charset="utf-8">
-    <title>Login - Karirku</title>
+    <title>Lupa Password - Karirku</title>
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <meta content="" name="keywords">
     <meta content="" name="description">
@@ -46,7 +40,6 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
     <link href="../assets/css/auth.css" rel="stylesheet">
     <link href="../assets/css/style.css" rel="stylesheet">
 
-    <!-- Login Page Styles -->
     <style>
         .login-container {
             position: relative;
@@ -80,53 +73,6 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
             margin-top: -15px;
         }
 
-        .login-card2 {
-            background: white;
-            border-radius: 32px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            width: 100%;
-            max-width: 400px;
-            overflow: hidden;
-        }
-
-        .btn-text {
-            margin-left: 20px;
-            color: #8D92A0;
-            font-weight: 600;
-            line-height: 1.4;
-            font-size: 16px;
-        }
-
-        .btn-google {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            width: 100%;
-            padding: 2px 6px;
-            border: 1px solid #ddd;
-            border-radius: 32px;
-            background: white;
-            font-weight: 500;
-            color: #333;
-            transition: all 0.3s;
-            text-decoration: none;
-            cursor: pointer;
-        }
-
-        .btn-google:hover {
-            background: #f5f5f5;
-        }
-
-        .btn-google img {
-            width: 55px;
-            height: 55px;
-            margin: 0;
-        }
-
-        .login-title {
-            color: #002E92;
-        }
-
         .btn-login-primary {
             background-color: #001f66;
             color: white;
@@ -134,52 +80,13 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
             padding: 12px;
             border-radius: 32px;
             font-weight: 500;
-            width: 141px;
+            width: 100%;
             transition: background-color 0.3s;
+            margin-top: 10px;
         }
 
-        .login-card2 .btn-google {
-            margin-bottom: 0;
-            border-radius: 32px;
-        }
-
-        .login-card2 {
-            padding: 0;
-        }
-
-        .span-text h1 {
-            color: #8D92A0;
-            font-size: 18px;
-            font-weight: 600;
-            line-height: 1.4;
-            margin-top: 12px;
-            font-size: 15px;
-        }
-
-        .btn-daftar-primary {
-            display: inline-block;
-            text-align: center;
-            text-decoration: none;
-            background-color: #001f66;
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 32px;
-            font-weight: 500;
-            width: 350px;
-            transition: background-color 0.3s;
-            margin-top: 2px;
-            cursor: pointer;
-        }
-
-        .btn-daftar-primary:hover {
+        .btn-login-primary:hover {
             background-color: #002c99;
-            color: white;
-            text-decoration: none;
-        }
-
-        .btn-daftar-primary a {
-            color: white;
         }
 
         .form-control {
@@ -194,14 +101,53 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
             transition: border-color 0.3s;
         }
 
-        .form-control input {
-            font-size: 20px;
-        }
-
         .form-control:focus {
             outline: none;
             border-bottom: 1px solid #001f66;
             box-shadow: none;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 15px;
+            color: #001f66;
+            text-decoration: none;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .step {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #ddd;
+            color: #666;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 10px;
+            font-weight: bold;
+        }
+
+        .step.active {
+            background: #001f66;
+            color: white;
+        }
+
+        .step-line {
+            width: 40px;
+            height: 2px;
+            background: #ddd;
+            margin: 0 5px;
+            align-self: center;
         }
     </style>
 </head>
@@ -233,31 +179,43 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
     <!-- Login Container Start -->
     <div class="login-container">
         <div class="intro-text">
-            <h1>Masuk ke akun Karirku untuk melanjutkan</h1>
+            <h1>Reset Password Akun Karirku</h1>
         </div>
+
+        <!-- Step Indicator -->
+        <div class="step-indicator">
+            <div class="step active">1</div>
+            <div class="step-line"></div>
+            <div class="step">2</div>
+            <div class="step-line"></div>
+            <div class="step">3</div>
+        </div>
+
         <div class="login-card1">
             <div class="login-body">
-                <h4 class="login-title"><img src="../assets/img/karirkulogo.png" alt="" style="width: 40px;"> Login</h4>
-                <!-- Pastikan action form sudah benar -->
-                <form action="../function/auth-process.php" method="POST">
-                    <input type="hidden" name="action" value="login">
+                <h4 class="login-title"><img src="../assets/img/karirkulogo.png" alt="" style="width: 40px;"> Verifikasi Email</h4>
+
+                <form id="forgotPasswordForm" action="../function/auth-process.php" method="POST">
+                    <input type="hidden" name="action" value="forgot-password">
 
                     <div class="form-group">
-                        <input type="text" id="username" name="username" class="form-control" required placeholder="Nama Pengguna atau Email">
+                        <input type="email" id="email" name="email" class="form-control" required
+                            placeholder="Masukkan email Anda">
                     </div>
 
-                    <div class="form-group">
-                        <input type="password" id="password" name="password" class="form-control" required placeholder="Kata sandi">
-                    </div>
-                    <!-- Tambahkan link lupa password di sini -->
-                    <div style="text-align: right; margin-bottom: 15px;">
-                        <a href="forgot-password.php" style="color: #001f66; text-decoration: none; font-size: 14px;">
-                            Lupa Password?
-                        </a>
-                    </div>
-                    <button type="submit" class="btn-login-primary">Login</button>
+                    <button type="submit" class="btn-login-primary">Verifikasi Email</button>
                 </form>
-                <!-- Di dalam login.php, setelah kode untuk menampilkan error, tambahkan: -->
+
+                <!-- Pesan Error -->
+                <?php if (isset($_SESSION['error'])): ?>
+                    <div class="alert alert-danger mt-3">
+                        <?php
+                        echo $_SESSION['error'];
+                        unset($_SESSION['error']);
+                        ?>
+                    </div>
+                <?php endif; ?>
+
                 <?php if (isset($_SESSION['success'])): ?>
                     <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
                         <i class="bi bi-check-circle-fill me-2"></i>
@@ -268,58 +226,17 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 <?php endif; ?>
-                <?php if (isset($_SESSION['error_role'])): ?>
-                    <div class="alert alert-warning mt-3">
-                        <?php
-                        echo $_SESSION['error_role'];
-                        unset($_SESSION['error_role']);
-                        ?>
-                    </div>
-                <?php endif; ?>
-                <!-- Tambahkan pesan error jika ada -->
-                <?php if (isset($_SESSION['error'])): ?>
-                    <div class="alert alert-danger mt-3">
-                        <?php
-                        echo $_SESSION['error'];
-                        unset($_SESSION['error']);
-                        ?>
-                    </div>
-                <?php endif; ?>
-
-                <?php if (isset($_GET['error'])): ?>
-                    <div class="alert alert-danger mt-3">
-                        <?php echo htmlspecialchars($_GET['error']); ?>
-                    </div>
-                <?php endif; ?>
             </div>
         </div>
-        <div class="login-card2">
-            <!-- Update tombol Google untuk redirect ke google-auth.php -->
-            <a href="../function/google-auth.php" class="btn-google">
-                <span class="btn-text">Pilih akun google</span>
-                <span class="btn-icon">
-                    <img src="../assets/img/icon-google2.png" alt="">
-                </span>
-            </a>
-        </div>
-        <div class="span-text">
-            <h1>Belum punya akun? klik daftar</h1>
-        </div>
-        <a href="register.php" class="btn-daftar-primary" style="display: inline-block; text-align: center; text-decoration: none;">
-            Daftar
+
+        <a href="login.php" class="back-link">
+            <i class="bi bi-arrow-left"></i> Kembali ke Login
         </a>
     </div>
-    <!-- Login Container End -->
 
     <!-- JavaScript Libraries -->
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="../assets/lib/wow/wow.min.js"></script>
-    <script src="../assets/lib/easing/easing.min.js"></script>
-    <script src="../assets/lib/waypoints/waypoints.min.js"></script>
-
-    <!-- Template Javascript -->
-    <script src="../assets/js/main.js"></script>
     <script>
         // Auto-hide notifications after 5 seconds
         document.addEventListener('DOMContentLoaded', function() {

@@ -133,6 +133,80 @@ $userName = $_SESSION['user'] ?? ''; // Pastikan ini 'user' bukan 'user_name'
 
                     <div class="auth-buttons d-flex align-items-center">
                         <?php if ($isLoggedIn && isset($_SESSION['user_id'])): ?>
+                            <div class="dropdown me-3">
+                                <button class="btn btn-primary position-relative" type="button" id="notificationDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="background-color: #001f66; border: none; border-radius: 8px; padding: 8px 16px;">
+                                    <i class="fas fa-bell"></i>
+                                    <?php
+                                    $unseenCount = 0;
+                                    if ($isLoggedIn && isset($_SESSION['user_id'])) {
+                                        $unseenCount = countUnseenNotifications($_SESSION['user_id']);
+                                    }
+                                    ?>
+                                    <?php if ($unseenCount > 0): ?>
+                                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                            <?= $unseenCount ?>
+                                        </span>
+                                    <?php endif; ?>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notificationDropdown" style="min-width: 300px;">
+                                    <li class="dropdown-header">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <strong>Notifikasi</strong>
+                                            <?php if ($unseenCount > 0): ?>
+                                                <button class="btn btn-sm btn-outline-primary" onclick="markAllAsRead()">
+                                                    Tandai sudah dibaca
+                                                </button>
+                                            <?php endif; ?>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <hr class="dropdown-divider">
+                                    </li>
+                                    <?php if ($isLoggedIn && isset($_SESSION['user_id'])): ?>
+                                        <?php
+                                        $notifications = getNotifikasiLowonganBaru($_SESSION['user_id'], 5);
+                                        ?>
+                                        <?php if ($notifications['success'] && count($notifications['data']) > 0): ?>
+                                            <?php foreach ($notifications['data'] as $notif): ?>
+                                                <li>
+                                                    <a class="dropdown-item" href="views/job-detail.php?id=<?= $notif['id_lowongan'] ?>">
+                                                        <div class="d-flex align-items-start" style="padding: 20px 10px;">
+                                                            <?php if (!empty($notif['perusahaan']['logo_url'])): ?>
+                                                            <?php else: ?>
+                                                                <div class="bg-light rounded d-flex align-items-center justify-content-center me-2" style="width: 30px; height: 30px;">
+                                                                    <i class="fas fa-briefcase text-primary"></i>
+                                                                </div>
+                                                            <?php endif; ?>
+                                                            <div class="flex-grow-1" >
+                                                                <div class="fw-semibold"><?= htmlspecialchars($notif['judul']) ?></div>
+                                                                <small class="text-muted"><?= htmlspecialchars($notif['perusahaan']['nama_perusahaan'] ?? 'Perusahaan') ?></small>
+                                                                <div class="text-muted" style="font-size: 0.75rem;">
+                                                                    <?= date('d M Y', strtotime($notif['dibuat_pada'])) ?>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <hr class="dropdown-divider">
+                                                </li>
+                                            <?php endforeach; ?>
+                                            <li>
+                                                <a class="dropdown-item text-center text-primary" href="views/job-list.php">
+                                                    Lihat Semua Lowongan
+                                                </a>
+                                            </li>
+                                        <?php else: ?>
+                                            <li>
+                                                <div class="dropdown-item text-center text-muted">
+                                                    <i class="fas fa-bell-slash fa-2x mb-2"></i>
+                                                    <div>Tidak ada notifikasi baru</div>
+                                                </div>
+                                            </li>
+                                        <?php endif; ?>
+                                    <?php endif; ?>
+                                </ul>
+                            </div>
                             <?php
                             require_once 'function/supabase.php';
                             $pencaker = getPencakerByUserId($_SESSION['user_id']);
@@ -168,7 +242,6 @@ $userName = $_SESSION['user'] ?? ''; // Pastikan ini 'user' bukan 'user_name'
             </div>
         </nav>
         <!-- Navbar End -->
-
         <!-- Carousel Start -->
         <div class="container-fluid p-0">
             <div class="owl-carousel header-carousel position-relative">
@@ -363,12 +436,35 @@ $userName = $_SESSION['user'] ?? ''; // Pastikan ini 'user' bukan 'user_name'
 
     <!-- Logout Confirmation Script -->
     <script>
-        function confirmLogout() {
-            if (confirm('Apakah Anda yakin ingin logout?')) {
-                window.location.href = 'views/logout.php';
-            }
-            return false;
+        // Fungsi untuk menandai semua notifikasi sebagai sudah dibaca
+        function markAllAsRead() {
+            fetch('function/mark-notifications-read.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Reload halaman untuk update counter
+                        location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
         }
+
+        // Auto-close dropdown ketika klik di luar
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('#notificationDropdown')) {
+                const dropdown = document.querySelector('.dropdown-menu');
+                if (dropdown && dropdown.classList.contains('show')) {
+                    // Optional: bisa tambahkan logika untuk update last check time
+                }
+            }
+        });
     </script>
 </body>
 

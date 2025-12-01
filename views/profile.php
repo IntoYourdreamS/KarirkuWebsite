@@ -27,6 +27,40 @@ if (!empty($pencaker['tanggal_lahir'])) {
     $today = new DateTime();
     $usia = $today->diff($tanggalLahir)->y;
 }
+
+// Ambil data lamaran user
+$lamaranData = [];
+if ($pencaker) {
+    $result = supabaseQuery('lamaran', [
+        'select' => '*, lowongan(judul, perusahaan(nama_perusahaan))',
+        'id_pencaker' => 'eq.' . $pencaker['id_pencaker'],
+        'order' => 'tanggal_lamaran.desc',
+        'limit' => 10
+    ]);
+
+    if ($result['success']) {
+        $lamaranData = $result['data'];
+    }
+}
+
+// Hitung statistik lamaran
+$jumlah_diproses = 0;
+$jumlah_diterima = 0;
+$jumlah_ditolak = 0;
+
+foreach ($lamaranData as $lamaran) {
+    switch ($lamaran['status']) {
+        case 'diproses':
+            $jumlah_diproses++;
+            break;
+        case 'diterima':
+            $jumlah_diterima++;
+            break;
+        case 'ditolak':
+            $jumlah_ditolak++;
+            break;
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -424,9 +458,9 @@ if (!empty($pencaker['tanggal_lahir'])) {
                 </div>
 
                 <div class="status-badges">
-                    <div class="badge-custom badge-yellow">Pengajuan (0)</div>
-                    <div class="badge-custom badge-green">Diterima (0)</div>
-                    <div class="badge-custom badge-red">Ditolak (0)</div>
+                    <div class="badge-custom badge-yellow">Diproses (<?= $jumlah_diproses ?>)</div>
+                    <div class="badge-custom badge-green">Diterima (<?= $jumlah_diterima ?>)</div>
+                    <div class="badge-custom badge-red">Ditolak (<?= $jumlah_ditolak ?>)</div>
                 </div>
             </div>
         <?php endif; ?>
@@ -436,6 +470,15 @@ if (!empty($pencaker['tanggal_lahir'])) {
             <!-- Aktivitas Card -->
             <div class="info-card">
                 <h3 class="card-title">Aktivitas</h3>
+                <div class="card-item" onclick="window.location.href='my-applications.php'">
+                    <div class="card-item-left">
+                        <a href="aktivitas.php">
+                        <i class="bi bi-file-text card-icon"></i>
+                        <span class="card-item-text">Lamaran Saya</span>
+                        </a>
+                    </div>
+                    <i class="bi bi-chevron-right card-arrow"></i>
+                </div>
                 <div class="card-item" onclick="window.location.href='saved-jobs.php'">
                     <div class="card-item-left">
                         <i class="bi bi-bookmark card-icon"></i>
@@ -443,24 +486,10 @@ if (!empty($pencaker['tanggal_lahir'])) {
                     </div>
                     <i class="bi bi-chevron-right card-arrow"></i>
                 </div>
-                <div class="card-item" onclick="window.location.href='liked-jobs.php'">
+                <div class="card-item" onclick="window.location.href='<?= htmlspecialchars($pencaker['cv_url'] ?? '#') ?>'">
                     <div class="card-item-left">
-                        <i class="bi bi-heart card-icon"></i>
-                        <span class="card-item-text">Suka</span>
-                    </div>
-                    <i class="bi bi-chevron-right card-arrow"></i>
-                </div>
-                <div class="card-item" onclick="window.location.href='favorite-jobs.php'">
-                    <div class="card-item-left">
-                        <i class="bi bi-star card-icon"></i>
-                        <span class="card-item-text">Favorit</span>
-                    </div>
-                    <i class="bi bi-chevron-right card-arrow"></i>
-                </div>
-                <div class="card-item" onclick="window.location.href='<?php echo htmlspecialchars($pencaker['cv_url'] ?? '#'); ?>'">
-                    <div class="card-item-left">
-                        <i class="bi bi-file-text card-icon"></i>
-                        <span class="card-item-text">CV</span>
+                        <i class="bi bi-file-earmark-person card-icon"></i>
+                        <span class="card-item-text">CV Saya</span>
                     </div>
                     <i class="bi bi-chevron-right card-arrow"></i>
                 </div>
@@ -497,6 +526,142 @@ if (!empty($pencaker['tanggal_lahir'])) {
                 </div>
             </div>
         </div>
+        <!-- Section Lamaran Saya -->
+        <?php if ($pencaker && !empty($lamaranData)): ?>
+            <div class="lamaran-section">
+                <div class="section-header">
+                    <h3>Lamaran Terbaru</h3>
+                    <a href="my-applications.php" class="view-all">Lihat Semua</a>
+                </div>
+
+                <div class="lamaran-list">
+                    <?php foreach (array_slice($lamaranData, 0, 3) as $lamaran): ?>
+                        <div class="lamaran-item">
+                            <div class="lamaran-header">
+                                <h4><?= htmlspecialchars($lamaran['lowongan']['judul']) ?></h4>
+                                <span class="status-badge status-<?= $lamaran['status'] ?>">
+                                    <?= ucfirst($lamaran['status']) ?>
+                                </span>
+                            </div>
+                            <p class="company-name">
+                                <?= htmlspecialchars($lamaran['lowongan']['perusahaan']['nama_perusahaan']) ?>
+                            </p>
+                            <p class="lamaran-date">
+                                Dilamar pada: <?= date('d M Y', strtotime($lamaran['tanggal_lamaran'])) ?>
+                            </p>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+
+            <style>
+                .lamaran-section {
+                    background: white;
+                    border-radius: 20px;
+                    padding: 30px;
+                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+                    margin-top: 30px;
+                }
+
+                .section-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 25px;
+                }
+
+                .section-header h3 {
+                    color: #003399;
+                    font-size: 22px;
+                    font-weight: 700;
+                    margin: 0;
+                }
+
+                .view-all {
+                    color: #003399;
+                    text-decoration: none;
+                    font-weight: 600;
+                }
+
+                .view-all:hover {
+                    text-decoration: underline;
+                }
+
+                .lamaran-list {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 20px;
+                }
+
+                .lamaran-item {
+                    background: #f8f9fa;
+                    border-radius: 12px;
+                    padding: 20px;
+                    border-left: 4px solid #003399;
+                }
+
+                .lamaran-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                    margin-bottom: 10px;
+                }
+
+                .lamaran-header h4 {
+                    color: #2b3940;
+                    font-size: 18px;
+                    font-weight: 600;
+                    margin: 0;
+                    flex: 1;
+                }
+
+                .status-badge {
+                    padding: 6px 12px;
+                    border-radius: 20px;
+                    font-size: 12px;
+                    font-weight: 600;
+                }
+
+                .status-diproses {
+                    background: #e3f2fd;
+                    color: #1976d2;
+                }
+
+                .status-diterima {
+                    background: #e8f5e8;
+                    color: #2e7d32;
+                }
+
+                .status-ditolak {
+                    background: #ffebee;
+                    color: #c62828;
+                }
+
+                .company-name {
+                    color: #6c757d;
+                    margin: 5px 0;
+                    font-size: 14px;
+                }
+
+                .lamaran-date {
+                    color: #6c757d;
+                    font-size: 12px;
+                    margin: 5px 0 0 0;
+                }
+
+                .catatan-perusahaan {
+                    background: white;
+                    padding: 12px;
+                    border-radius: 8px;
+                    margin-top: 10px;
+                    border-left: 3px solid #ffc107;
+                }
+
+                .catatan-perusahaan strong {
+                    color: #856404;
+                }
+            </style>
+        <?php endif; ?>
     </div>
 
     <!-- JavaScript Libraries -->

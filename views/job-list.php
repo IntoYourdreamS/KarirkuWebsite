@@ -165,11 +165,75 @@ if (isset($_GET['debug'])) {
             right: 0 !important;
         }
 
+        /* Perbaikan alignment dropdown user */
+        .auth-buttons {
+            display: flex;
+            align-items: center;
+            height: 100%;
+        }
+
+        .user-dropdown {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            padding: 0;
+            margin: 0;
+        }
+
+        .user-dropdown img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .user-dropdown .fa-user {
+            font-size: 18px;
+        }
+
+        /* Pastikan dropdown menu juga sejajar */
+        .dropdown-menu {
+            left: auto !important;
+            right: 0 !important;
+            top: 100% !important;
+            margin-top: 8px !important;
+        }
+
+        /* Perbaikan untuk ikon default */
+        .rounded-circle.bg-light {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+        }
+
+        /* Pastikan navbar items vertikal center */
+        .navbar-nav {
+            display: flex;
+            align-items: center;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+        }
+
         .user-dropdown:focus,
         .user-dropdown:active {
             border: none !important;
             outline: none !important;
             box-shadow: none !important;
+        }
+
+        .company-logo-list {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            object-position: center;
+            border-radius: 8px;
         }
     </style>
 </head>
@@ -223,7 +287,7 @@ if (isset($_GET['debug'])) {
                                 <li>
                                     <hr class="dropdown-divider">
                                 </li>
-                                <li><a class="dropdown-item text-danger" href="views/logout.php">
+                                <li><a class="dropdown-item text-danger" href="logout.php">
                                         <i class="fas fa-sign-out-alt me-2"></i>Logout
                                     </a></li>
                             </ul>
@@ -309,11 +373,18 @@ if (isset($_GET['debug'])) {
                 <div class="job-item p-4 mb-4 border rounded shadow-sm">
                     <div class="row align-items-center">
                         <div class="col-md-2 text-center">
-                            <img src="../assets/img/logo.png" alt="logo" class="img-fluid" style="max-height: 60px;">
+                            <?php
+                            $logoUrl = getCompanyLogoUrl($row);
+                            $companyName = getCompanyName($row);
+                            ?>
+                            <img src="<?= htmlspecialchars($logoUrl) ?>"
+                                alt="Logo <?= htmlspecialchars($companyName) ?>"
+                                class="company-logo-list rounded">
                         </div>
                         <div class="col-md-7">
                             <h5 class="fw-bold mb-1"><?= htmlspecialchars($row['judul'] ?? 'Judul tidak tersedia') ?></h5>
                             <p class="mb-1 text-muted">
+                                <i class="fa fa-building me-2"></i><?= htmlspecialchars($companyName) ?> |
                                 <i class="fa fa-map-marker-alt me-2"></i><?= htmlspecialchars($row['lokasi'] ?? 'Lokasi tidak tersedia') ?> |
                                 <i class="fa fa-tags me-2"></i><?= htmlspecialchars($row['kategori'] ?? 'Kategori tidak tersedia') ?>
                             </p>

@@ -2,6 +2,11 @@
 // config.php
 $base_url = '../../';
 
+// Mulai session di paling atas
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 // Include supabase.php dengan path yang benar
 $supabase_path = __DIR__ . '/../../function/supabase.php';
 if (file_exists($supabase_path)) {
@@ -20,32 +25,11 @@ if (file_exists($supabase_path)) {
                 'status' => 'publish',
                 'statusClass' => 'status-publish',
                 'statusLabel' => 'Publish'
-            ],
-            [
-                'id' => 2,
-                'title' => 'Frontend Developer',
-                'company' => 'PT Teknologi Maju',
-                'salary' => 'Rp 7.000.000 - Rp 12.000.000',
-                'posted' => 'Diposting 5 hari lalu',
-                'applicants' => 'Berjumlah 35 Pelamar',
-                'status' => 'ditinjau',
-                'statusClass' => 'status-review',
-                'statusLabel' => 'Ditinjau'
-            ],
-            [
-                'id' => 3,
-                'title' => 'Backend Developer',
-                'company' => 'PT Digital Indonesia',
-                'salary' => 'Rp 8.000.000 - Rp 15.000.000',
-                'posted' => 'Diposting 2 hari lalu',
-                'applicants' => 'Berjumlah 0 Pelamar',
-                'status' => 'ditolak',
-                'statusClass' => 'status-rejected',
-                'statusLabel' => 'Ditolak'
             ]
         ],
         'live' => [],
         'perlu' => [],
+        'draft' => [],
         'sedang' => []
     ];
     $jobsDataJson = json_encode($jobsData);
@@ -61,19 +45,17 @@ if (isset($supabase_url) && function_exists('supabaseQuery')) {
             'order' => 'dibuat_pada.desc'
         ]);
 
-        if (!$result['success']) {
+        if (!$result['success'] || !is_array($result['data'])) {
             error_log("Error fetching jobs: " . print_r($result, true));
-            return [
-                'semua' => [],
-                'live' => [],
-                'perlu' => [],
-                'sedang' => []
-            ];
+            return [];
         }
 
         $allJobs = [];
         
         foreach ($result['data'] as $job) {
+            // Pastikan status ada, jika tidak beri default
+            $status = $job['status'] ?? 'ditinjau';
+            
             // Hitung jarak hari
             $createdDate = new DateTime($job['dibuat_pada']);
             $currentDate = new DateTime();
@@ -88,7 +70,6 @@ if (isset($supabase_url) && function_exists('supabaseQuery')) {
             $salary = $job['gaji_range'] ?: 'Gaji tidak ditampilkan';
             
             // Tentukan status class dan label berdasarkan status di database
-            $status = $job['status'] ?? 'ditinjau';
             $statusClass = '';
             $statusLabel = '';
             
@@ -100,6 +81,10 @@ if (isset($supabase_url) && function_exists('supabaseQuery')) {
                 case 'ditinjau':
                     $statusClass = 'status-review';
                     $statusLabel = 'Ditinjau';
+                    break;
+                case 'draft':
+                    $statusClass = 'status-draft';
+                    $statusLabel = 'Draft';
                     break;
                 case 'ditolak':
                     $statusClass = 'status-rejected';
@@ -124,7 +109,13 @@ if (isset($supabase_url) && function_exists('supabaseQuery')) {
                 'statusClass' => $statusClass,
                 'statusLabel' => $statusLabel,
                 'location' => $job['lokasi'] ?? '',
-                'type' => $job['tipe_pekerjaan'] ?? ''
+                'type' => $job['tipe_pekerjaan'] ?? '',
+                'description' => $job['deskripsi'] ?? '',
+                'qualifications' => $job['kualifikasi'] ?? '',
+                'category' => $job['kategori'] ?? '',
+                'work_mode' => $job['mode_kerja'] ?? '',
+                'benefits' => $job['benefit'] ?? '',
+                'deadline' => $job['batas_tanggal'] ?? ''
             ];
 
             $allJobs[] = $jobData;
@@ -136,18 +127,20 @@ if (isset($supabase_url) && function_exists('supabaseQuery')) {
     // Ambil semua data lowongan dari database
     $allJobs = getJobsDataFromDatabase();
     
+    // Helper function untuk filter dengan pengecekan status yang aman
+    function filterJobsByStatus($jobs, $targetStatus) {
+        return array_values(array_filter($jobs, function($job) use ($targetStatus) {
+            return isset($job['status']) && $job['status'] === $targetStatus;
+        }));
+    }
+    
     // Siapkan data untuk JSON (semua data, filtering dilakukan di JavaScript)
     $jobsDataForJson = [
         'semua' => $allJobs,
-        'live' => array_values(array_filter($allJobs, function($job) { 
-            return $job['status'] === 'publish'; 
-        })),
-        'perlu' => array_values(array_filter($allJobs, function($job) { 
-            return $job['status'] === 'ditinjau'; 
-        })),
-        'sedang' => array_values(array_filter($allJobs, function($job) { 
-            return $job['status'] === 'ditolak'; 
-        }))
+        'live' => filterJobsByStatus($allJobs, 'publish'),
+        'perlu' => filterJobsByStatus($allJobs, 'ditinjau'),
+        'draft' => filterJobsByStatus($allJobs, 'draft'),
+        'sedang' => filterJobsByStatus($allJobs, 'ditolak')
     ];
 
     $jobsDataJson = json_encode($jobsDataForJson);
@@ -156,14 +149,27 @@ if (isset($supabase_url) && function_exists('supabaseQuery')) {
     $jobsData = [
         'semua' => $allJobs,
         'live' => array_filter($allJobs, function($job) { 
-            return $job['status'] === 'publish'; 
+            return isset($job['status']) && $job['status'] === 'publish'; 
         }),
         'perlu' => array_filter($allJobs, function($job) { 
-            return $job['status'] === 'ditinjau'; 
+            return isset($job['status']) && $job['status'] === 'ditinjau'; 
+        }),
+        'draft' => array_filter($allJobs, function($job) { 
+            return isset($job['status']) && $job['status'] === 'draft'; 
         }),
         'sedang' => array_filter($allJobs, function($job) { 
-            return $job['status'] === 'ditolak'; 
+            return isset($job['status']) && $job['status'] === 'ditolak'; 
         })
     ];
+} else {
+    // Fallback data jika supabase tidak tersedia
+    $jobsData = [
+        'semua' => [],
+        'live' => [],
+        'perlu' => [],
+        'draft' => [],
+        'sedang' => []
+    ];
+    $jobsDataJson = json_encode($jobsData);
 }
 ?>

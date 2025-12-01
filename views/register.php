@@ -1,8 +1,16 @@
 <?php
 session_start();
+
+// Jika user sudah login dan role-nya perusahaan, redirect ke login perusahaan
 if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
-    header('Location: ../index.php');
-    exit;
+    if (isset($_SESSION['role']) && $_SESSION['role'] === 'perusahaan') {
+        $_SESSION['error'] = "Akun anda adalah akun perusahaan";
+        header('Refresh: 1; url=../company/login.php');
+        exit;
+    } else {
+        header('Location: ../index.php');
+        exit;
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -244,7 +252,15 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
 
                     <button type="submit" class="btn-login-primary">Daftar</button>
                 </form>
-
+                <!-- Tambahkan pesan error jika user perusahaan mencoba register di sini -->
+                <?php if (isset($_SESSION['error_role'])): ?>
+                    <div class="alert alert-warning mt-3">
+                        <?php
+                        echo $_SESSION['error_role'];
+                        unset($_SESSION['error_role']);
+                        ?>
+                    </div>
+                <?php endif; ?>
                 <!-- Tambahkan pesan error jika ada -->
                 <?php if (isset($_SESSION['error'])): ?>
                     <div class="alert alert-danger mt-3">
@@ -254,7 +270,7 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
                         ?>
                     </div>
                 <?php endif; ?>
-                
+
                 <?php if (isset($_GET['error'])): ?>
                     <div class="alert alert-danger mt-3">
                         <?php echo htmlspecialchars($_GET['error']); ?>
@@ -262,8 +278,9 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
                 <?php endif; ?>
             </div>
         </div>
+        <!-- ✅ BENAR (harus seperti ini) -->
         <div class="login-card2">
-            <a href="google-auth.php" class="btn-google">
+            <a href="../function/google-auth.php" class="btn-google" id="google-auth-btn">
                 <span class="btn-text">Pilih akun google</span>
                 <span class="btn-icon">
                     <img src="../assets/img/icon-google2.png" alt="">
@@ -288,6 +305,13 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
 
     <!-- Template Javascript -->
     <script src="../assets/js/main.js"></script>
+    <script>
+        document.getElementById('google-auth-btn').addEventListener('click', function(e) {
+            // Tambahkan loading state
+            this.querySelector('.btn-text').textContent = 'Loading...';
+            this.style.opacity = '0.7';
+        });
+    </script>
 </body>
 
 </html>

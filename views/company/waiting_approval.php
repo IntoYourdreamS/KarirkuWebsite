@@ -17,7 +17,7 @@ $company = supabaseQuery('perusahaan', [
 ]);
 
 // Jika status diterima, redirect ke index
-if ($company['success'] && count($company['data']) > 0 && $company['data'][0]['status_persetujuan'] === 'diterima') {
+if ($company['success'] && count($company['data']) > 0 && $company['data'][0]['status_persetujuan'] === 'disetujui') {
     header('Location: index.php');
     exit;
 }
