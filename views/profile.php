@@ -470,7 +470,7 @@ foreach ($lamaranData as $lamaran) {
             <!-- Aktivitas Card -->
             <div class="info-card">
                 <h3 class="card-title">Aktivitas</h3>
-                <div class="card-item" onclick="window.location.href='my-applications.php'">
+                <div class="card-item" onclick="window.location.href='aktivitas.php'">
                     <div class="card-item-left">
                         <a href="aktivitas.php">
                         <i class="bi bi-file-text card-icon"></i>

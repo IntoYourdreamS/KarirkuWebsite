@@ -20,11 +20,29 @@ if (!$user) {
 // Ambil data profil dari tabel pencaker
 $pencaker = getPencakerByUserId($user_id);
 
+$success = isset($_GET['success']) ? urldecode($_GET['success']) : '';
+$error = isset($_GET['error']) ? urldecode($_GET['error']) : '';
+
+// Cek jika ada pesan dari parameter GET
+if (isset($_GET['success_msg'])) {
+    $success = htmlspecialchars($_GET['success_msg']);
+}
+if (isset($_GET['error_msg'])) {
+    $error = htmlspecialchars($_GET['error_msg']);
+}
+
+// Cek jika ada pesan dari save action
+if (isset($_GET['saved'])) {
+    $success = "Lowongan berhasil disimpan!";
+} elseif (isset($_GET['unsaved'])) {
+    $success = "Lowongan berhasil dihapus dari favorit!";
+}
+
 // Ambil lowongan yang disimpan (favorit)
 $savedJobs = [];
 if ($pencaker) {
     $result = supabaseQuery('favorit_lowongan', [
-        'select' => '*, lowongan(*, perusahaan(nama_perusahaan, logo_url))',
+        'select' => '*, lowongan!inner(*, perusahaan!inner(nama_perusahaan, logo_url))',
         'id_pencaker' => 'eq.' . $pencaker['id_pencaker'],
         'order' => 'dibuat_pada.desc'
     ]);
@@ -34,11 +52,11 @@ if ($pencaker) {
     }
 }
 
-// Ambil riwayat lamaran
+// Ambil riwayat lamaran dengan format yang benar
 $applications = [];
 if ($pencaker) {
     $result = supabaseQuery('lamaran', [
-        'select' => '*, lowongan(judul, lokasi, perusahaan(nama_perusahaan, logo_url))',
+        'select' => '*, lowongan!inner(judul, lokasi, perusahaan!inner(nama_perusahaan, logo_url))',
         'id_pencaker' => 'eq.' . $pencaker['id_pencaker'],
         'order' => 'dibuat_pada.desc'
     ]);
@@ -48,7 +66,7 @@ if ($pencaker) {
     }
 }
 
-// Handle Upload CV
+// Handle Upload CV (Edit/Replace)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['cv_file'])) {
     $file = $_FILES['cv_file'];
 
@@ -57,58 +75,135 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['cv_file'])) {
     $maxSize = 5 * 1024 * 1024; // 5MB
 
     if (!in_array($file['type'], $allowedTypes)) {
-        $error = "Hanya file PDF yang diperbolehkan.";
+        header('Location: aktivitas.php?error_msg=' . urlencode('Hanya file PDF yang diperbolehkan.'));
+        exit;
     } elseif ($file['size'] > $maxSize) {
-        $error = "Ukuran file maksimal 5MB.";
+        header('Location: aktivitas.php?error_msg=' . urlencode('Ukuran file maksimal 5MB.'));
+        exit;
     } else {
-        // Upload ke Supabase Storage
-        $fileName = 'cv_' . $user_id . '_' . time() . '.pdf';
-        $uploadResult = supabaseStorageUpload('cv', $fileName, $file);
+        // Hapus CV lama jika ada (dari storage dan database)
+        if ($cvData) {
+            // Hapus file lama dari Supabase Storage
+            $parsedUrl = parse_url($cvData['cv_url']);
+            $oldPath = str_replace('/storage/v1/object/public/cv/', '', $parsedUrl['path']);
+            supabaseStorageDelete('cv', $oldPath);
+
+            // Hapus record lama dari database
+            supabaseDelete('cv', 'id_cv', $cvData['id_cv']);
+        }
+
+        // Upload file baru ke Supabase Storage
+        $fileName = 'cv_' . $pencaker['id_pencaker'] . '.pdf'; // Nama tetap untuk menimpa
+        $filePath = 'pencaker/' . $fileName;
+
+        $uploadResult = supabaseStorageUpload('cv', $filePath, $file);
 
         if ($uploadResult['success']) {
-            $cvUrl = getStoragePublicUrl('cv', $fileName);
+            $cvUrl = getStoragePublicUrl('cv', $filePath);
 
-            // Update profil pencaker dengan URL CV
-            if ($pencaker) {
-                // Hapus CV lama jika ada
-                if (!empty($pencaker['cv_url'])) {
-                    $oldPath = str_replace(getStoragePublicUrl('cv', ''), '', $pencaker['cv_url']);
-                    supabaseStorageDelete('cv', $oldPath);
-                }
+            // Insert atau update CV di tabel cv
+            $insertResult = supabaseInsert('cv', [
+                'id_pencaker' => $pencaker['id_pencaker'],
+                'id_pengguna' => $user_id,
+                'nama_file' => $fileName,
+                'cv_url' => $cvUrl,
+                'uploaded_at' => date('Y-m-d H:i:s')
+            ]);
 
-                $updateResult = updatePencakerProfile($pencaker['id_pencaker'], [
-                    'cv_url' => $cvUrl
-                ]);
+            // Update juga di tabel pencaker untuk backward compatibility
+            updatePencakerProfile($pencaker['id_pencaker'], [
+                'cv_url' => $cvUrl,
+                'diperbarui_pada' => date('Y-m-d H:i:s')
+            ]);
 
-                if ($updateResult['success']) {
-                    $success = "CV berhasil diupload!";
-                    $pencaker['cv_url'] = $cvUrl;
-                } else {
-                    $error = "Gagal menyimpan CV ke database.";
-                }
+            if ($insertResult['success']) {
+                header('Location: aktivitas.php?success_msg=' . urlencode('CV berhasil diupdate!'));
+                exit;
+            } else {
+                header('Location: aktivitas.php?error_msg=' . urlencode('Gagal menyimpan CV ke database.'));
+                exit;
             }
         } else {
-            $error = "Gagal mengupload CV.";
+            header('Location: aktivitas.php?error_msg=' . urlencode('Gagal mengupload CV.'));
+            exit;
         }
     }
 }
 
 // Handle Delete CV
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_cv'])) {
-    if ($pencaker && !empty($pencaker['cv_url'])) {
-        $oldPath = str_replace(getStoragePublicUrl('cv', ''), '', $pencaker['cv_url']);
-        $deleteResult = supabaseStorageDelete('cv', $oldPath);
+    if ($cvData) {
+        // Hapus file dari Supabase Storage
+        $parsedUrl = parse_url($cvData['cv_url']);
+        $path = str_replace('/storage/v1/object/public/cv/', '', $parsedUrl['path']);
 
-        if ($deleteResult['success']) {
-            $updateResult = updatePencakerProfile($pencaker['id_pencaker'], [
-                'cv_url' => null
+        $deleteStorageResult = supabaseStorageDelete('cv', $path);
+
+        if ($deleteStorageResult['success']) {
+            // Hapus dari tabel cv
+            $deleteDbResult = supabaseDelete('cv', 'id_cv', $cvData['id_cv']);
+
+            // Update juga di tabel pencaker (kosongkan cv_url)
+            updatePencakerProfile($pencaker['id_pencaker'], [
+                'cv_url' => null,
+                'diperbarui_pada' => date('Y-m-d H:i:s')
             ]);
 
-            if ($updateResult['success']) {
-                $success = "CV berhasil dihapus!";
-                $pencaker['cv_url'] = null;
+            if ($deleteDbResult['success']) {
+                header('Location: aktivitas.php?success_msg=' . urlencode('CV berhasil dihapus!'));
+                exit;
+            } else {
+                header('Location: aktivitas.php?error_msg=' . urlencode('Gagal menghapus CV dari database.'));
+                exit;
             }
+        } else {
+            header('Location: aktivitas.php?error_msg=' . urlencode('Gagal menghapus CV dari storage.'));
+            exit;
         }
+    }
+}
+
+// Handle Remove Favorite
+if (isset($_GET['remove_favorite']) && is_numeric($_GET['remove_favorite'])) {
+    $id_favorit = $_GET['remove_favorite'];
+
+    if ($pencaker) {
+        // Verifikasi bahwa favorit milik user ini
+        $checkResult = supabaseQuery('favorit_lowongan', [
+            'select' => 'id_favorit',
+            'id_favorit' => 'eq.' . $id_favorit,
+            'id_pencaker' => 'eq.' . $pencaker['id_pencaker']
+        ]);
+
+        if ($checkResult['success'] && !empty($checkResult['data'])) {
+            $deleteResult = supabaseDelete('favorit_lowongan', 'id_favorit', $id_favorit);
+
+            if ($deleteResult['success']) {
+                header('Location: aktivitas.php?success_msg=' . urlencode('Lowongan berhasil dihapus dari favorit!'));
+                exit();
+            } else {
+                header('Location: aktivitas.php?error_msg=' . urlencode('Gagal menghapus dari favorit.'));
+                exit();
+            }
+        } else {
+            header('Location: aktivitas.php?error_msg=' . urlencode('Lowongan tidak ditemukan dalam favorit.'));
+            exit();
+        }
+    }
+}
+
+// Ambil data CV dari tabel cv (hanya 1 CV per pencaker)
+$cvData = null;
+if ($pencaker) {
+    $result = supabaseQuery('cv', [
+        'select' => '*',
+        'id_pencaker' => 'eq.' . $pencaker['id_pencaker'],
+        'order' => 'uploaded_at.desc',
+        'limit' => 1
+    ]);
+
+    if ($result['success'] && !empty($result['data'])) {
+        $cvData = $result['data'][0];
     }
 }
 ?>
@@ -172,55 +267,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_cv'])) {
         <!-- Back Button -->
         <a href="profile.php" class="back-button">
             <i class="bi bi-arrow-left"></i>
-            <span>Kembali</span>
+            <span>Kembali ke Profil</span>
         </a>
 
-        <?php if (isset($success)): ?>
+        <!-- Success/Error Messages -->
+        <?php if (!empty($success)): ?>
             <div class="alert alert-success">
-                <i class="bi bi-check-circle"></i> <?php echo $success; ?>
+                <i class="bi bi-check-circle-fill"></i> <?php echo $success; ?>
             </div>
         <?php endif; ?>
 
-        <?php if (isset($error)): ?>
+        <?php if (!empty($error)): ?>
             <div class="alert alert-danger">
-                <i class="bi bi-exclamation-circle"></i> <?php echo $error; ?>
+                <i class="bi bi-exclamation-circle-fill"></i> <?php echo $error; ?>
             </div>
         <?php endif; ?>
 
-        <!-- Cards Grid -->
-        <div class="cards-grid">
+        <!-- Vertical Cards Layout -->
+        <div class="cards-vertical">
             <!-- Card 1: Lamaran Saya -->
             <div class="activity-card">
                 <div class="card-header">
-                    <h6>Lamaran Saya</h6>
+                    <h6><i class="bi bi-file-text me-2"></i>Lamaran Saya</h6>
+                    <span class="badge bg-primary"><?php echo count($applications); ?> lamaran</span>
                 </div>
 
                 <div class="applications-table">
                     <?php if (empty($applications)): ?>
                         <div class="empty-state">
-                            <i class="bi bi-inbox"></i>
+                            <i class="bi bi-inbox-fill"></i>
                             <p>Belum ada lamaran</p>
+                            <a href="job-list.php" class="btn btn-outline-primary mt-2">Cari Lowongan</a>
                         </div>
                     <?php else: ?>
                         <div id="applicationList">
                             <?php foreach ($applications as $index => $app):
-                                $job = $app['lowongan'];
-                                $company = $job['perusahaan'];
+                                $job = $app['lowongan'] ?? [];
+                                $company = $job['perusahaan'] ?? [];
                                 $isHidden = $index >= 5 ? 'style="display:none;"' : '';
                             ?>
                                 <div class="application-row" <?php echo $isHidden; ?>>
                                     <img src="<?php echo htmlspecialchars($company['logo_url'] ?? '../assets/img/default-company.png'); ?>"
-                                        alt="<?php echo htmlspecialchars($company['nama_perusahaan']); ?>"
+                                        alt="<?php echo htmlspecialchars($company['nama_perusahaan'] ?? 'Perusahaan'); ?>"
                                         class="job-logo">
                                     <div class="job-info">
-                                        <div class="job-title"><?php echo htmlspecialchars($job['judul']); ?></div>
-                                        <div class="job-company"><?php echo htmlspecialchars($company['nama_perusahaan']); ?></div>
+                                        <div class="job-title"><?php echo htmlspecialchars($job['judul'] ?? 'Judul tidak tersedia'); ?></div>
+                                        <div class="job-company"><?php echo htmlspecialchars($company['nama_perusahaan'] ?? 'Perusahaan tidak tersedia'); ?></div>
                                         <div class="job-location">
                                             <i class="bi bi-calendar"></i>
-                                            <?php echo date('d M Y', strtotime($app['dibuat_pada'])); ?>
+                                            <?php echo date('d M Y', strtotime($app['dibuat_pada'] ?? date('Y-m-d'))); ?>
+                                            •
+                                            <i class="bi bi-geo-alt ms-2"></i>
+                                            <?php echo htmlspecialchars($job['lokasi'] ?? 'Lokasi tidak tersedia'); ?>
                                         </div>
                                     </div>
-                                    <span class="status-badge status-<?php echo $app['status']; ?>">
+                                    <span class="status-badge status-<?php echo $app['status'] ?? 'diproses'; ?>">
                                         <?php
                                         $statusText = [
                                             'diproses' => 'Diproses',
@@ -228,7 +329,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_cv'])) {
                                             'ditolak' => 'Ditolak',
                                             'lanjutan' => 'Lanjutan'
                                         ];
-                                        echo $statusText[$app['status']] ?? 'Unknown';
+                                        echo $statusText[$app['status'] ?? 'diproses'] ?? 'Diproses';
                                         ?>
                                     </span>
                                 </div>
@@ -238,7 +339,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_cv'])) {
                         <?php if (count($applications) > 5): ?>
                             <div class="show-toggle">
                                 <button class="btn-toggle" id="toggleApplicationBtn" onclick="toggleApplications()">
-                                    Tampilkan Lebih Banyak
+                                    Tampilkan Lebih Banyak (<span id="appCount"><?php echo count($applications) - 5; ?></span>)
                                 </button>
                             </div>
                         <?php endif; ?>
@@ -249,7 +350,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_cv'])) {
             <!-- Card 2: Lowongan Disimpan -->
             <div class="activity-card">
                 <div class="card-header">
-                    <h6>Lowongan Disimpan</h6>
+                    <h6><i class="bi bi-bookmark-fill me-2"></i>Lowongan Disimpan</h6>
+                    <span class="badge bg-warning text-dark"><?php echo count($savedJobs); ?> disimpan</span>
                 </div>
 
                 <div class="saved-jobs-table">
@@ -257,32 +359,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_cv'])) {
                         <div class="empty-state">
                             <i class="bi bi-bookmark"></i>
                             <p>Belum ada lowongan yang disimpan</p>
+                            <p class="text-muted small mt-2">Klik ikon <i class="fas fa-bookmark text-warning"></i> di halaman lowongan untuk menyimpan</p>
+                            <a href="job-list.php" class="btn btn-outline-warning mt-2">
+                                <i class="bi bi-search me-2"></i>Jelajahi Lowongan
+                            </a>
                         </div>
                     <?php else: ?>
                         <div id="jobList">
                             <?php foreach ($savedJobs as $index => $saved):
-                                $job = $saved['lowongan'];
-                                $company = $job['perusahaan'];
+                                $job = $saved['lowongan'] ?? [];
+                                $company = $job['perusahaan'] ?? [];
                                 $isHidden = $index >= 5 ? 'style="display:none;"' : '';
                             ?>
                                 <div class="job-row" <?php echo $isHidden; ?>>
                                     <img src="<?php echo htmlspecialchars($company['logo_url'] ?? '../assets/img/default-company.png'); ?>"
-                                        alt="<?php echo htmlspecialchars($company['nama_perusahaan']); ?>"
+                                        alt="<?php echo htmlspecialchars($company['nama_perusahaan'] ?? 'Perusahaan'); ?>"
                                         class="job-logo">
                                     <div class="job-info">
-                                        <div class="job-title"><?php echo htmlspecialchars($job['judul']); ?></div>
-                                        <div class="job-company"><?php echo htmlspecialchars($company['nama_perusahaan']); ?></div>
-                                        <div class="job-location">
-                                            <i class="bi bi-geo-alt"></i>
-                                            <?php echo htmlspecialchars($job['lokasi']); ?>
+                                        <div class="job-title"><?php echo htmlspecialchars($job['judul'] ?? 'Judul tidak tersedia'); ?></div>
+                                        <div class="job-company"><?php echo htmlspecialchars($company['nama_perusahaan'] ?? 'Perusahaan tidak tersedia'); ?></div>
+                                        <div class="job-meta">
+                                            <span class="job-location">
+                                                <i class="bi bi-geo-alt"></i>
+                                                <?php echo htmlspecialchars($job['lokasi'] ?? 'Lokasi tidak tersedia'); ?>
+                                            </span>
+                                            <span class="job-type">
+                                                <i class="bi bi-briefcase"></i>
+                                                <?php echo htmlspecialchars($job['tipe_pekerjaan'] ?? 'Full-time'); ?>
+                                            </span>
+                                            <span class="job-saved-date">
+                                                <i class="bi bi-calendar"></i>
+                                                <?php echo date('d M Y', strtotime($saved['dibuat_pada'])); ?>
+                                            </span>
                                         </div>
                                     </div>
                                     <div class="job-actions">
                                         <button class="btn-view" onclick="window.location.href='job-detail.php?id=<?php echo $job['id_lowongan']; ?>'">
-                                            Lihat
+                                            <i class="bi bi-eye"></i> Lihat
                                         </button>
-                                        <button class="btn-remove" onclick="removeFavorite(<?php echo $saved['id_favorit']; ?>)">
-                                            Hapus
+                                        <button class="btn-remove" onclick="removeFavorite(<?php echo $saved['id_favorit']; ?>, '<?php echo htmlspecialchars(addslashes($job['judul'])); ?>')">
+                                            <i class="bi bi-trash"></i> Hapus
                                         </button>
                                     </div>
                                 </div>
@@ -292,7 +408,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_cv'])) {
                         <?php if (count($savedJobs) > 5): ?>
                             <div class="show-toggle">
                                 <button class="btn-toggle" id="toggleJobBtn" onclick="toggleJobs()">
-                                    Tampilkan Lebih Banyak
+                                    Tampilkan Lebih Banyak (<span id="jobCount"><?php echo count($savedJobs) - 5; ?></span>)
                                 </button>
                             </div>
                         <?php endif; ?>
@@ -303,47 +419,77 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_cv'])) {
             <!-- Card 3: CV Saya -->
             <div class="activity-card">
                 <div class="card-header">
-                    <h6>CV Saya</h6>
+                    <h6><i class="bi bi-file-earmark-person-fill me-2"></i>CV Saya</h6>
+                    <?php if ($cvData): ?>
+                        <span class="badge bg-success">Tersedia</span>
+                    <?php else: ?>
+                        <span class="badge bg-secondary">Belum Upload</span>
+                    <?php endif; ?>
                 </div>
 
-                <?php if (!$pencaker || empty($pencaker['cv_url'])): ?>
-                    <!-- Upload CV -->
+                <?php if (!$cvData): ?>
+                    <!-- Upload CV (Pertama Kali) -->
                     <div class="cv-upload-section">
                         <i class="bi bi-cloud-upload cv-icon"></i>
                         <h3 class="cv-title">Upload CV Anda</h3>
-                        <p class="cv-text">Maksimal ukuran file 5MB (Format PDF)</p>
+                        <p class="cv-text">Format PDF • Maksimal ukuran file 5MB</p>
+                        <p class="text-muted small mb-3">1 akun hanya dapat memiliki 1 CV</p>
 
                         <form method="POST" enctype="multipart/form-data" id="cvForm">
                             <div class="file-input-wrapper">
-                                <input type="file" name="cv_file" id="cvFile" accept=".pdf" onchange="document.getElementById('cvForm').submit()">
+                                <input type="file" name="cv_file" id="cvFile" accept=".pdf" required>
                                 <label for="cvFile" class="btn-upload">
                                     <i class="bi bi-upload"></i>
                                     Pilih File CV
                                 </label>
                             </div>
+                            <div class="mt-3">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-cloud-upload me-2"></i>Upload CV
+                                </button>
+                            </div>
                         </form>
                     </div>
                 <?php else: ?>
-                    <!-- Display CV -->
-                    <div class="cv-display">
-                        <i class="bi bi-file-earmark-pdf"></i>
-                        <div class="cv-filename">
-                            <?php
-                            $cvPath = parse_url($pencaker['cv_url'], PHP_URL_PATH);
-                            $cvName = basename($cvPath);
-                            echo htmlspecialchars($cvName);
-                            ?>
-                        </div>
-                        <div class="cv-actions">
-                            <a href="<?php echo htmlspecialchars($pencaker['cv_url']); ?>" target="_blank" class="btn-download">
-                                <i class="bi bi-download"></i> Download
-                            </a>
-                            <form method="POST" style="display: inline;">
-                                <button type="submit" name="delete_cv" class="btn-delete"
-                                    onclick="return confirm('Apakah Anda yakin ingin menghapus CV?')">
-                                    <i class="bi bi-trash"></i> Hapus
-                                </button>
-                            </form>
+                    <!-- Display CV dalam format table seperti lowongan disimpan -->
+                    <div id="cvList">
+                        <div class="job-row">
+                            <div class="job-info">
+                                <div class="job-title"><?php echo htmlspecialchars($cvData['nama_file']); ?></div>
+                                <div class="job-company">CV Anda</div>
+                                <div class="job-meta">
+                                    <span class="job-location">
+                                        <i class="bi bi-calendar"></i>
+                                        Diupdate: <?php echo date('d M Y H:i', strtotime($cvData['uploaded_at'])); ?>
+                                    </span>
+                                    <span class="job-type">
+                                        <i class="bi bi-info-circle"></i>
+                                        Upload CV baru akan menimpa CV yang lama
+                                    </span>
+                                    <span class="job-saved-date">
+                                        <i class="bi bi-file-earmark-pdf"></i>
+                                        Format: PDF
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="job-actions">
+                                <a href="<?php echo htmlspecialchars($cvData['cv_url']); ?>" target="_blank" class="btn-view">
+                                    <i class="bi bi-download"></i> Download
+                                </a>
+
+                                <form method="POST" enctype="multipart/form-data" class="d-inline edit" style="margin: 0;">
+                                    <input type="file" name="cv_file" id="replaceCvFile" accept=".pdf" style="display: none;" onchange="this.form.submit()">
+                                    <button type="button" class="btn-edit" onclick="document.getElementById('replaceCvFile').click()">
+                                        <i class="bi bi-pencil"></i> Edit/Ganti
+                                    </button>
+                                </form>
+
+                                <form method="POST" class="d-inline" style="margin: 0;">
+                                    <button type="submit" name="delete_cv" class="btn-remove" onclick="return confirmDeleteCV()">
+                                        <i class="bi bi-trash"></i> Hapus
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 <?php endif; ?>
@@ -362,6 +508,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_cv'])) {
         function toggleJobs() {
             const jobRows = document.querySelectorAll('.job-row');
             const toggleBtn = document.getElementById('toggleJobBtn');
+            const jobCount = document.getElementById('jobCount');
 
             showingAllJobs = !showingAllJobs;
 
@@ -371,12 +518,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_cv'])) {
                 }
             });
 
-            toggleBtn.textContent = showingAllJobs ? 'Tampilkan Lebih Sedikit' : 'Tampilkan Lebih Banyak';
+            if (showingAllJobs) {
+                toggleBtn.innerHTML = 'Tampilkan Lebih Sedikit';
+                jobCount.style.display = 'none';
+            } else {
+                toggleBtn.innerHTML = 'Tampilkan Lebih Banyak (<span id="jobCount">' + (jobRows.length - 5) + '</span>)';
+            }
         }
 
         function toggleApplications() {
             const appRows = document.querySelectorAll('.application-row');
             const toggleBtn = document.getElementById('toggleApplicationBtn');
+            const appCount = document.getElementById('appCount');
 
             showingAllApplications = !showingAllApplications;
 
@@ -386,14 +539,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_cv'])) {
                 }
             });
 
-            toggleBtn.textContent = showingAllApplications ? 'Tampilkan Lebih Sedikit' : 'Tampilkan Lebih Banyak';
-        }
-
-        function removeFavorite(id) {
-            if (confirm('Apakah Anda yakin ingin menghapus lowongan ini dari favorit?')) {
-                window.location.href = 'remove-favorite.php?id=' + id;
+            if (showingAllApplications) {
+                toggleBtn.innerHTML = 'Tampilkan Lebih Sedikit';
+                appCount.style.display = 'none';
+            } else {
+                toggleBtn.innerHTML = 'Tampilkan Lebih Banyak (<span id="appCount">' + (appRows.length - 5) + '</span>)';
             }
         }
+
+        function removeFavorite(id, jobTitle) {
+            if (confirm(`Apakah Anda yakin ingin menghapus "${jobTitle}" dari favorit?`)) {
+                window.location.href = `aktivitas.php?remove_favorite=${id}`;
+            }
+        }
+
+        function confirmDeleteCV() {
+            return confirm('Apakah Anda yakin ingin menghapus CV? CV yang dihapus tidak dapat dikembalikan.');
+        }
+
+        // Validasi file sebelum upload
+        document.getElementById('cvFile')?.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const submitBtn = document.querySelector('#cvForm button[type="submit"]');
+
+            if (file) {
+                // Validasi ukuran (5MB)
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('Ukuran file maksimal 5MB');
+                    e.target.value = '';
+                    submitBtn.disabled = true;
+                    return;
+                }
+
+                // Validasi tipe file
+                if (file.type !== 'application/pdf') {
+                    alert('Hanya file PDF yang diperbolehkan');
+                    e.target.value = '';
+                    submitBtn.disabled = true;
+                    return;
+                }
+
+                submitBtn.disabled = false;
+            }
+        });
+
+        // Auto-hide alerts setelah 5 detik
+        setTimeout(() => {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                alert.style.transition = 'opacity 0.5s';
+                alert.style.opacity = '0';
+                setTimeout(() => alert.remove(), 500);
+            });
+        }, 5000);
     </script>
 </body>
 

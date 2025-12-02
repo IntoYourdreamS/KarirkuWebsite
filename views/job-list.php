@@ -5,6 +5,32 @@ session_start();
 $isLoggedIn = isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true;
 $userName = $_SESSION['user_name'] ?? '';
 
+// Ambil data pencaker jika user login
+$pencaker = null;
+$id_pencaker = null;
+if ($isLoggedIn && isset($_SESSION['user_id'])) {
+    require_once __DIR__ . '/../function/supabase.php';
+    $pencaker = getPencakerByUserId($_SESSION['user_id']);
+    if ($pencaker) {
+        $id_pencaker = $pencaker['id_pencaker'];
+    }
+}
+
+// Ambil daftar favorit pencaker jika login
+$favorit_lowongan = [];
+if ($id_pencaker) {
+    $favorit_result = supabaseQuery('favorit_lowongan', [
+        'select' => 'id_lowongan',
+        'id_pencaker' => 'eq.' . $id_pencaker
+    ]);
+
+    if ($favorit_result['success']) {
+        foreach ($favorit_result['data'] as $fav) {
+            $favorit_lowongan[] = $fav['id_lowongan'];
+        }
+    }
+}
+
 $daftarLokasi = getDaftarLokasi();
 
 $searchInput = validateSearchInput($_GET);
@@ -21,6 +47,61 @@ $currentPage = $result['pagination']['current_page'] ?? 1;
 $totalData = $result['pagination']['total_data'] ?? 0;
 $searchKeyword = $result['search_params']['keyword'] ?? '';
 $searchLokasi = $result['search_params']['lokasi'] ?? '';
+
+// Handle save/unsave action
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    if (!$isLoggedIn || !$id_pencaker) {
+        header('Location: login.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
+        exit;
+    }
+
+    $id_lowongan = $_POST['id_lowongan'] ?? 0;
+    $action = $_POST['action'];
+
+    if ($action === 'save') {
+        // Cek apakah sudah ada
+        $check_result = supabaseQuery('favorit_lowongan', [
+            'select' => 'id_favorit',
+            'id_pencaker' => 'eq.' . $id_pencaker,
+            'id_lowongan' => 'eq.' . $id_lowongan
+        ]);
+
+        if ($check_result['success'] && empty($check_result['data'])) {
+            $insert_result = supabaseInsert('favorit_lowongan', [
+                'id_pencaker' => $id_pencaker,
+                'id_lowongan' => $id_lowongan,
+                'dibuat_pada' => date('Y-m-d H:i:s')
+            ]);
+
+            if ($insert_result['success']) {
+                $favorit_lowongan[] = $id_lowongan;
+            }
+        }
+    } elseif ($action === 'unsave') {
+        // Cari id_favorit
+        $find_result = supabaseQuery('favorit_lowongan', [
+            'select' => 'id_favorit',
+            'id_pencaker' => 'eq.' . $id_pencaker,
+            'id_lowongan' => 'eq.' . $id_lowongan
+        ]);
+
+        if ($find_result['success'] && !empty($find_result['data'])) {
+            $id_favorit = $find_result['data'][0]['id_favorit'];
+            $delete_result = supabaseDelete('favorit_lowongan', 'id_favorit', $id_favorit);
+
+            if ($delete_result['success']) {
+                $key = array_search($id_lowongan, $favorit_lowongan);
+                if ($key !== false) {
+                    unset($favorit_lowongan[$key]);
+                }
+            }
+        }
+    }
+
+    // Refresh halaman
+    header('Location: ' . $_SERVER['PHP_SELF'] . '?' . http_build_query($_GET));
+    exit;
+}
 
 if (isset($_GET['debug'])) {
     echo "<!-- Debug: Success=" . ($result['success'] ? 'true' : 'false') .
@@ -235,6 +316,73 @@ if (isset($_GET['debug'])) {
             object-position: center;
             border-radius: 8px;
         }
+
+        /* Save Button Styles */
+        .save-button-container {
+            position: absolute;
+            top: 33px;
+            right: 175px;
+            z-index: 10;
+        }
+
+        .save-form {
+            margin: 0;
+            padding: 0;
+        }
+
+        .btn-save {
+            background: white;
+            border: 2px solid #dee2e6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 18px;
+            text-decoration: none;
+        }
+
+        .btn-save:hover {
+            background: #003399;
+            border-color: #003399;
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .btn-save.saved {
+            background: #003399;
+            border-color: #003399;
+            color: white;
+        }
+
+        .btn-save.saved:hover {
+            background: #dc3545;
+            border-color: #dc3545;
+        }
+
+        /* Job item positioning */
+        .job-item {
+            position: relative;
+            padding-top: 15px !important;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .save-button-container {
+                top: 15px;
+                right: 15px;
+            }
+
+            .btn-save {
+                width: 35px;
+                height: 35px;
+                font-size: 16px;
+            }
+        }
     </style>
 </head>
 
@@ -370,13 +518,33 @@ if (isset($_GET['debug'])) {
 
         <?php if (!empty($data)) : ?>
             <?php foreach ($data as $row): ?>
-                <div class="job-item p-4 mb-4 border rounded shadow-sm">
+                <?php
+                $logoUrl = getCompanyLogoUrl($row);
+                $companyName = getCompanyName($row);
+                $isFavorited = in_array($row['id_lowongan'], $favorit_lowongan);
+                ?>
+                <div class="job-item p-4 mb-4 border rounded shadow-sm position-relative">
+                    <!-- Save Button -->
+                    <div class="save-button-container">
+                        <?php if ($isLoggedIn): ?>
+                            <form method="POST" class="save-form">
+                                <input type="hidden" name="id_lowongan" value="<?= htmlspecialchars($row['id_lowongan']) ?>">
+                                <input type="hidden" name="action" value="<?= $isFavorited ? 'unsave' : 'save' ?>">
+                                <button type="submit" class="btn-save <?= $isFavorited ? 'saved' : '' ?>"
+                                    title="<?= $isFavorited ? 'Hapus dari favorit' : 'Simpan ke favorit' ?>">
+                                    <i class="<?= $isFavorited ? 'fas' : 'far' ?> fa-bookmark"></i>
+                                </button>
+                            </form>
+                        <?php else: ?>
+                            <a href="login.php?redirect=<?= urlencode($_SERVER['REQUEST_URI']) ?>"
+                                class="btn-save" title="Login untuk menyimpan">
+                                <i class="far fa-bookmark"></i>
+                            </a>
+                        <?php endif; ?>
+                    </div>
+
                     <div class="row align-items-center">
                         <div class="col-md-2 text-center">
-                            <?php
-                            $logoUrl = getCompanyLogoUrl($row);
-                            $companyName = getCompanyName($row);
-                            ?>
                             <img src="<?= htmlspecialchars($logoUrl) ?>"
                                 alt="Logo <?= htmlspecialchars($companyName) ?>"
                                 class="company-logo-list rounded">
@@ -482,7 +650,111 @@ if (isset($_GET['debug'])) {
 
     <!-- Template Javascript -->
     <script src="../assets/js/main.js"></script>
-    <?php include "include/logout-modal.php" ?>
+    <script>
+        // Fungsi untuk handle save button dengan AJAX
+        document.addEventListener('DOMContentLoaded', function() {
+            const saveForms = document.querySelectorAll('.save-form');
+
+            saveForms.forEach(form => {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+
+                    const formData = new FormData(this);
+                    const saveBtn = this.querySelector('.btn-save');
+                    const icon = saveBtn.querySelector('i');
+
+                    // Disable button selama proses
+                    saveBtn.disabled = true;
+
+                    fetch('', {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(response => {
+                            if (response.ok) {
+                                // Toggle kelas saved
+                                saveBtn.classList.toggle('saved');
+
+                                // Toggle icon
+                                if (saveBtn.classList.contains('saved')) {
+                                    icon.classList.remove('far');
+                                    icon.classList.add('fas');
+                                    saveBtn.title = 'Hapus dari favorit';
+                                } else {
+                                    icon.classList.remove('fas');
+                                    icon.classList.add('far');
+                                    saveBtn.title = 'Simpan ke favorit';
+                                }
+
+                                // Toggle action value
+                                const actionInput = this.querySelector('input[name="action"]');
+                                actionInput.value = saveBtn.classList.contains('saved') ? 'unsave' : 'save';
+                            }
+                            return response;
+                        })
+                        .finally(() => {
+                            saveBtn.disabled = false;
+                        });
+                });
+            });
+        });
+
+        // Show toast notification for save actions
+        function showSaveNotification(message, type = 'success') {
+            // Remove existing notifications
+            const existingNotif = document.querySelector('.save-notification');
+            if (existingNotif) existingNotif.remove();
+
+            // Create notification
+            const notification = document.createElement('div');
+            notification.className = `save-notification alert alert-${type} alert-dismissible fade show`;
+            notification.innerHTML = `
+        <i class="bi ${type === 'success' ? 'bi-check-circle' : 'bi-exclamation-circle'} me-2"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+
+            // Add styles
+            notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        min-width: 300px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    `;
+
+            document.body.appendChild(notification);
+
+            // Auto remove after 3 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.classList.remove('show');
+                    setTimeout(() => notification.remove(), 300);
+                }
+            }, 3000);
+        }
+
+        // Add CSS for notification
+        const style = document.createElement('style');
+        style.textContent = `
+    .save-notification {
+        animation: slideInRight 0.3s ease-out;
+    }
+    
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+`;
+        document.head.appendChild(style);
+    </script>
 </body>
 
 </html>

@@ -375,8 +375,7 @@ function getLowonganWithPerusahaan() {
 // }
 
 // Fungsi untuk menghapus data dari tabel Supabase
-function supabaseDelete($table, $column, $value)
-{
+function supabaseDelete($table, $column, $value) {
     global $supabase_url, $supabase_key;
 
     $url = $supabase_url . '/rest/v1/' . $table . '?' . $column . '=eq.' . $value;
@@ -565,4 +564,45 @@ function updateStatusLamaran($id_lamaran, $status, $catatan_perusahaan = '') {
     error_log("Update result: " . print_r($result, true));
     
     return $result;
+}
+
+// Fungsi untuk mendapatkan detail lowongan dengan perusahaan
+function getLowonganWithPerusahaanDetail($id_lowongan) {
+    $result = supabaseQuery('lowongan', [
+        'select' => '*, perusahaan(nama_perusahaan, logo_url, lokasi)',
+        'id_lowongan' => 'eq.' . $id_lowongan
+    ]);
+    
+    return $result['success'] && !empty($result['data']) ? $result['data'][0] : null;
+}
+
+// Fungsi untuk mendapatkan semua favorit pencaker
+function getFavoritByPencaker($id_pencaker) {
+    return supabaseQuery('favorit_lowongan', [
+        'select' => '*, lowongan(*, perusahaan(nama_perusahaan, logo_url))',
+        'id_pencaker' => 'eq.' . $id_pencaker,
+        'order' => 'dibuat_pada.desc'
+    ]);
+}
+
+// Fungsi untuk menambahkan ke favorit
+function addToFavorites($id_pencaker, $id_lowongan) {
+    $data = [
+        'id_pencaker' => $id_pencaker,
+        'id_lowongan' => $id_lowongan,
+        'dibuat_pada' => date('Y-m-d H:i:s')
+    ];
+    
+    return supabaseInsert('favorit_lowongan', $data);
+}
+
+// Fungsi untuk mengecek apakah lowongan sudah di-favorit
+function isJobFavorited($id_pencaker, $id_lowongan) {
+    $result = supabaseQuery('favorit_lowongan', [
+        'select' => 'id_favorit',
+        'id_pencaker' => 'eq.' . $id_pencaker,
+        'id_lowongan' => 'eq.' . $id_lowongan
+    ]);
+    
+    return $result['success'] && !empty($result['data']);
 }
