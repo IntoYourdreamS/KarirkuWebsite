@@ -3,7 +3,6 @@
 include 'config.php';
 $activePage = 'laporan';
 
-session_start();
 require_once __DIR__ . '/../../function/supabase.php';
 
 // Pastikan user sudah login

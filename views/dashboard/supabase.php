@@ -12,7 +12,6 @@ $supabase_url = 'https://tkjnbelcgfwpbhppsnrl.supabase.co';
 $supabase_key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRram5iZWxjZ2Z3cGJocHBzbnJsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTc0MDc2MiwiZXhwIjoyMDc3MzE2NzYyfQ.vZoNXxMWtoG4ktg7K6Whqv8EFzCv7qbS3OAHEfxVoR0';
 
 // 3. INISIALISASI $CLIENT (Untuk Dashboard Baru)
-// Variabel $client ini yang akan dipakai di data_perusahaan.php dan verifikasi.php
 try {
     $client = new Client([
         'base_uri' => $supabase_url . '/rest/v1/',
@@ -28,10 +27,10 @@ try {
 }
 
 // ============================================================================
-// 4. HELPER FUNCTIONS LAMA (Untuk Login, Register, Profil, dll)
-// Bagian ini tetap dipertahankan agar fitur lama tidak error/rusak.
+// 4. HELPER FUNCTIONS CRUD (Query, Insert, Update, Delete)
 // ============================================================================
 
+// --- FUNGSI SELECT (READ) ---
 function supabaseQuery($table, $params = [], $options = [])
 {
     global $supabase_url, $supabase_key;
@@ -88,6 +87,7 @@ function supabaseQuery($table, $params = [], $options = [])
     return $result;
 }
 
+// --- FUNGSI INSERT (CREATE) ---
 function supabaseInsert($table, $data)
 {
     global $supabase_url, $supabase_key;
@@ -127,6 +127,7 @@ function supabaseInsert($table, $data)
     ];
 }
 
+// --- FUNGSI UPDATE (EDIT) ---
 function supabaseUpdate($table, $data, $column, $value)
 {
     global $supabase_url, $supabase_key;
@@ -160,7 +161,43 @@ function supabaseUpdate($table, $data, $column, $value)
     ];
 }
 
-// --- HELPER USER & PROFIL ---
+// --- FUNGSI DELETE (HAPUS) ---
+// (Ini yang baru ditambahkan untuk mengatasi error di user.php)
+function supabaseDelete($table, $column, $value)
+{
+    global $supabase_url, $supabase_key;
+
+    // URL: url/rest/v1/tabel?kolom=eq.nilai
+    $url = $supabase_url . '/rest/v1/' . $table . '?' . $column . '=eq.' . urlencode($value);
+
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL => $url,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CUSTOMREQUEST => 'DELETE',
+        CURLOPT_HTTPHEADER => [
+            'apikey: ' . $supabase_key,
+            'Authorization: Bearer ' . $supabase_key,
+            'Content-Type: application/json',
+        ],
+    ]);
+
+    $response = curl_exec($ch);
+    $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    return [
+        'success' => $statusCode >= 200 && $statusCode < 300,
+        'data' => json_decode($response, true),
+        'status' => $statusCode,
+        'error' => $curlError . ' ' . $response
+    ];
+}
+
+// ============================================================================
+// 5. HELPER USER & PROFIL
+// ============================================================================
 
 function checkUsernameExists($username) {
     $result = supabaseQuery('users', ['select' => 'id', 'username' => 'eq.' . $username]);
@@ -184,5 +221,4 @@ function getStoragePublicUrl($bucket, $path) {
     global $supabase_url;
     return $supabase_url . '/storage/v1/object/public/' . $bucket . '/' . $path;
 }
-
 ?>

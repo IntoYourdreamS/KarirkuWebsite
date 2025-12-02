@@ -1,318 +1,295 @@
 <?php 
-  // --- 1. LOAD LIBRARY ---
-  require_once 'supabase.php';
+// --- 1. SETUP KONEKSI & LOGIKA ---
+require_once __DIR__ . '/supabase.php';
 
-  // --- 2. AMBIL DATA ---
-  $id_perusahaan = isset($_GET['id']) ? $_GET['id'] : 0;
-  $data = null;
+$id_perusahaan = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
-  try {
-      $response = $client->get('perusahaan?id_perusahaan=eq.' . $id_perusahaan . '&select=*');
-      if ($response->getStatusCode() == 200) {
-          $result = json_decode($response->getBody(), true);
-          if (!empty($result)) { $data = $result[0]; }
-      }
-  } catch (Exception $e) { }
+if ($id_perusahaan == 0) {
+    echo "<script>alert('ID tidak valid'); window.location='data_perusahaan.php';</script>";
+    exit;
+}
 
-  // Fallback Data
-  if (!$data) {
-      $nama_pt = "Data Tidak Ditemukan";
-      $deskripsi = "-"; $alamat = "-"; $website = "#"; $logo_url = ""; $rating = "0.0";
-      $makna_logo = "-"; $visi_misi = "-"; $struktur = "-"; $kebijakan = "-"; $anak_perusahaan = "-";
-      $email = "-"; $telepon = "-"; $npwp = "-";
-  } else {
-      $nama_pt = $data['nama_perusahaan'] ?? '-';
-      $website = $data['website'] ?? '#';
-      $logo_url = $data['logo'] ?? ''; 
-      $rating = $data['rating'] ?? '4.5';
-      $deskripsi = $data['deskripsi'] ?? '-';
-      $alamat = $data['alamat'] ?? '-';
-      $makna_logo = $data['makna_logo'] ?? '-';
-      $visi_misi = $data['visi_misi'] ?? '-';
-      $struktur = $data['struktur_organisasi'] ?? '-';
-      $kebijakan = $data['kebijakan_sm'] ?? '-';
-      $anak_perusahaan = $data['anak_perusahaan'] ?? '-';
-      $email = $data['email'] ?? '-'; 
-  }
-  
-  $activePage = 'data_perusahaan';
+// Ambil data perusahaan
+$result = supabaseQuery('perusahaan', [
+    'select' => '*',
+    'id_perusahaan' => 'eq.' . $id_perusahaan
+]);
 
-  include 'header.php';
-  include 'topbar.php';
+if (!$result['success'] || empty($result['data'])) {
+    echo "<div style='text-align:center; padding:50px;'>Data tidak ditemukan. <a href='data_perusahaan.php'>Kembali</a></div>";
+    exit;
+}
+
+$data = $result['data'][0];
+
+// --- DATA PREPARATION ---
+$nama_pt = htmlspecialchars($data['nama_perusahaan'] ?? 'Tanpa Nama');
+$deskripsi = nl2br(htmlspecialchars($data['deskripsi'] ?? '-'));
+$alamat = nl2br(htmlspecialchars($data['alamat'] ?? '-'));
+$website = htmlspecialchars($data['website'] ?? '#');
+$logo_url = $data['logo'] ?? ''; // Asumsi kolom logo
+$email = htmlspecialchars($data['email'] ?? '-');
+$telepon = htmlspecialchars($data['no_telp'] ?? '-');
+$npwp = htmlspecialchars($data['npwp'] ?? '-');
+$visi_misi = nl2br(htmlspecialchars($data['visi_misi'] ?? '-'));
+
+// Status Logic (Sesuaikan dengan kolom database, misal: status_persetujuan)
+$statusRaw = $data['status_persetujuan'] ?? 'menunggu'; 
+$status = strtolower($statusRaw);
+
+// Waktu Bergabung
+$tgl_raw = isset($data['created_at']) ? strtotime($data['created_at']) : time();
+$waktu_gabung = date('d M Y', $tgl_raw);
+
+$activePage = 'data_perusahaan';
+include 'header.php'; 
+// include 'topbar.php'; // Opsional jika header sudah include topbar
 ?>
 
 <style>
-    /* --- 1. RESET LAYOUT --- */
-    body { background-color: #F4F7FE; font-family: 'Inter', sans-serif; margin: 0; padding: 0; }
-    .sidebar, .left-sidebar, #sidebar { display: none !important; }
+    /* --- RESET & LAYOUT UTAMA (Copy dari detail_lowongan) --- */
+    body { background-color: #F8F9FC; font-family: 'DM Sans', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
+    
+    /* Sembunyikan elemen bawaan template jika mengganggu */
+    .sidebar, .left-sidebar, #sidebar, .header-navbar, .topbar { display: none !important; }
+
     .main-content {
         margin: 0 !important; padding: 0 !important;
         width: 100% !important; max-width: 100% !important;
-        background-color: #F4F7FE; min-height: 100vh;
+        min-height: 100vh;
     }
 
-    /* --- 2. HERO BANNER (BACKGROUND DIPAKSA) --- */
+    /* --- HERO BANNER --- */
     .hero-banner {
-        position: relative; width: 100%; height: 300px;
-        
-        /* JALUR GAMBAR ABSOLUT (PASTI MUNCUL) */
-        background-image: url('/KarirKuWebsite/assets/img/backgroundamin.png') !important;
-        
+        position: relative; width: 100%; height: 280px;
+        background-image: url('../../assets/img/backgroundamin.png'); 
         background-size: cover; background-position: center;
-        display: flex; align-items: center; justify-content: flex-start; 
-        padding-left: 10%;
-    }
-    .hero-overlay {
-        position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(43, 54, 116, 0.4); 
+        display: flex; align-items: center;
     }
 
-    /* Tulisan Judul Kaca */
-    .glass-title-box {
-        position: relative; z-index: 10;
-        background: rgba(255, 255, 255, 0.35);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.6);
-        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.2);
-        padding: 15px 40px;
-        border-radius: 50px;
-        display: flex; align-items: center; gap: 15px;
-    }
-    .glass-bar { width: 8px; height: 35px; background-color: #11047A; border-radius: 10px; }
-    .glass-text { font-size: 28px; font-weight: 800; color: #1B2559; }
-
-    /* Tombol Kembali */
-    .btn-back-simple {
-        position: absolute; top: 30px; left: 40px; z-index: 50;
-        color: white; font-size: 14px; font-weight: 600;
-        background: rgba(255,255,255,0.2); padding: 10px 20px; border-radius: 50px;
-        text-decoration: none; display: flex; align-items: center; gap: 8px;
-        border: 1px solid rgba(255,255,255,0.3);
-    }
-    .btn-back-simple:hover { background: rgba(255,255,255,0.4); }
-
-    /* --- 3. CONTAINER --- */
-    .profile-container {
-        max-width: 1100px; margin: 0 auto; padding: 40px 25px;
+    .hero-content {
+        margin-left: 8%;
+        position: relative;
+        padding-left: 25px;
     }
 
-    /* --- 4. ACCORDION (KLIK MUNCUL KE BAWAH) --- */
-    .company-main-title {
-        font-size: 32px; font-weight: 800; color: #1B2559; margin-bottom: 30px;
+    .hero-content::before {
+        content: ''; position: absolute; left: 0; top: 5px; bottom: 5px;
+        width: 8px; background-color: #003399;
+        border-radius: 4px;
     }
 
-    .accordion-item {
-        margin-bottom: 15px;
-        border-bottom: 1px solid #E0E5F2; /* Garis pemisah */
-        padding-bottom: 10px;
+    .hero-title {
+        font-size: 36px; font-weight: 800; color: #002B7F;
+        margin: 0; line-height: 1.2;
+    }
+    .hero-breadcrumb {
+        font-size: 14px; color: #555; margin-top: 5px; text-transform: uppercase; letter-spacing: 1px;
     }
 
-    .accordion-header {
-        display: flex; align-items: center; cursor: pointer;
-        padding: 10px 0; transition: 0.2s;
+    /* --- CONTAINER KONTEN --- */
+    .content-container {
+        max-width: 1100px;
+        margin: 40px auto;
+        padding: 0 20px;
     }
-    .accordion-header:hover { opacity: 0.7; }
 
-    .acc-icon { font-size: 18px; width: 25px; text-align: center; margin-right: 12px; }
-    .acc-title { font-size: 16px; font-weight: 700; color: #2B3674; flex: 1; }
+    /* --- HEADER PROFIL (FLEXBOX) --- */
+    .job-header-wrapper {
+        display: flex; 
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+
+    .job-info-group { display: flex; gap: 25px; align-items: flex-start; }
+
+    /* Logo Kotak Besar */
+    .company-logo-box {
+        width: 100px; height: 100px;
+        background: #E8EBF2; border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        overflow: hidden; flex-shrink: 0; border: 1px solid #ddd;
+    }
+    .company-logo-box img { width: 100%; height: 100%; object-fit: contain; }
+    .company-logo-box i { font-size: 40px; color: #999; }
+
+    /* Teks Header */
+    .job-title-text {
+        font-size: 28px; font-weight: 800; color: #003399;
+        margin: 0 0 5px 0;
+    }
+    .job-meta-text {
+        font-size: 16px; font-weight: 600; color: #555;
+        margin-bottom: 8px; display: flex; align-items: center; gap: 15px;
+    }
+    .job-meta-text i { color: #A3AED0; margin-right: 5px; }
+
+    /* Tags Info */
+    .tags-line { display: flex; gap: 10px; font-size: 13px; color: #444; margin-top: 8px; font-weight: 500; }
+    .tag-pill {
+        background: #E6F9EB; color: #05CD99; padding: 5px 12px; border-radius: 6px;
+        display: flex; align-items: center; gap: 5px;
+    }
+    .tag-pill.blue { background: #E0E5F2; color: #4318FF; }
+
+    /* --- TOMBOL AKSI (KANAN) --- */
+    .action-group {
+        display: flex; flex-direction: column; gap: 10px; align-items: flex-end;
+        min-width: 200px;
+    }
+    .btn-action {
+        padding: 12px 24px; border-radius: 8px; font-weight: 700; font-size: 14px;
+        text-decoration: none; border: none; cursor: pointer; text-align: center;
+        width: 100%; transition: 0.2s; display: inline-block;
+    }
     
-    /* Panah Indikator */
-    .acc-arrow { font-size: 14px; color: #A3AED0; transition: transform 0.3s ease; }
-    
-    /* Konten Tersembunyi */
-    .accordion-body {
-        display: none; /* Default Hilang */
-        padding: 10px 0 10px 37px; 
-        font-size: 14px; color: #707EAE; line-height: 1.6;
+    .btn-acc { background-color: #05CD99; color: white; }
+    .btn-acc:hover { background-color: #04b385; }
+
+    .btn-reject { background-color: #B71C1C; color: white; }
+    .btn-reject:hover { background-color: #920e0e; }
+
+    .status-badge {
+        padding: 8px 12px; border-radius: 20px; font-size: 12px; font-weight: 700;
+        margin-bottom: 10px; text-transform: uppercase; text-align: center; width: 100%;
     }
+    .st-wait { background: #FFECB3; color: #FF6F00; } 
+    .st-active { background: #C8E6C9; color: #2E7D32; } 
+    .st-reject { background: #FFCDD2; color: #C62828; }
 
-    /* CLASS ACTIVE (Saat Diklik) */
-    .accordion-item.active .accordion-body { display: block; animation: fadeIn 0.3s ease; }
-    .accordion-item.active .acc-arrow { transform: rotate(180deg); }
-
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
-
-    /* Warna Ikon */
-    .ic-org { color: #FF754C; } /* Orange */
-    .ic-blu { color: #4318FF; } /* Biru */
-    .ic-gry { color: #A3AED0; } /* Abu */
-
-    /* --- 5. KANAN: KOTAK ANALISIS --- */
-    .analysis-card {
-        background: white; border-radius: 20px; padding: 30px;
-        box-shadow: 0 5px 20px rgba(0,0,0,0.03);
+    /* --- SECTION KONTEN --- */
+    .address-section { margin-top: 10px; margin-bottom: 30px; }
+    .address-header { 
+        font-size: 18px; font-weight: 700; color: #333; margin-bottom: 8px;
+        display: flex; align-items: center; gap: 8px;
     }
-    .analysis-title { font-size: 18px; font-weight: 700; color: #1B2559; margin-bottom: 20px; }
-    
-    .check-item { margin-bottom: 15px; }
-    .check-label { font-size: 14px; font-weight: 700; color: #2B3674; margin-bottom: 5px; }
-    .check-val { font-size: 14px; color: #4A5568; display: flex; align-items: center; gap: 8px; }
-    .check-val i { color: #05CD99; }
-    
-    .rating-box { margin-top: 10px; font-size: 16px; color: #2B3674; font-weight: 700; }
-    .rating-box i { color: #FFB547; margin-right: 5px; }
+    .icon-orange { color: #FF5722; }
+    .address-text { font-size: 16px; color: #555; line-height: 1.6; }
 
-    .btn-delete-full {
-        display: block; width: 100%; padding: 15px; margin-top: 25px;
-        background: #9E0A0A; color: white; border-radius: 12px; font-weight: 700; text-align: center;
-        text-decoration: none; font-size: 14px; box-shadow: 0 4px 10px rgba(158, 10, 10, 0.2);
-    }
-    .btn-delete-full:hover { background: #7a0606; }
+    .desc-header { font-size: 18px; font-weight: 700; color: #333; margin-bottom: 10px; margin-top: 30px; }
+    .desc-text { font-size: 16px; color: #555; line-height: 1.8; text-align: justify; }
+
+    hr { border: 0; border-top: 1px solid #E0E0E0; margin: 30px 0; }
 
 </style>
 
 <div class="main-content">
     
     <div class="hero-banner">
-        <div class="hero-overlay"></div>
-        
-        <a href="data_perusahaan.php" class="btn-back-simple">
-            <i class="fas fa-chevron-left"></i> Kembali
-        </a>
-
-        <div class="glass-title-box">
-            <div class="glass-bar"></div>
-            <div class="glass-text">Detail Perusahaan</div>
+        <div class="hero-content">
+            <h1 class="hero-title">Detail Perusahaan</h1>
+            <div class="hero-breadcrumb">DASHBOARD / PERUSAHAAN / DETAIL</div>
         </div>
     </div>
 
-    <div class="profile-container">
-        <div class="row">
+    <div class="content-container">
+        
+        <div class="job-header-wrapper">
             
-            <div class="col-lg-7">
-                
-                <h1 class="company-main-title"><?php echo htmlspecialchars($nama_pt); ?></h1>
-
-                <div class="accordion-item" onclick="toggleAcc(this)">
-                    <div class="accordion-header">
-                        <i class="fas fa-map-marker-alt acc-icon ic-org"></i>
-                        <span class="acc-title">Alamat Perusahaan</span>
-                        <i class="fas fa-chevron-down acc-arrow"></i>
-                    </div>
-                    <div class="accordion-body">
-                        <?php echo htmlspecialchars($alamat); ?>
-                    </div>
+            <div class="job-info-group">
+                <div class="company-logo-box">
+                    <?php if(!empty($logo_url)): ?>
+                        <img src="<?= htmlspecialchars($logo_url) ?>" alt="Logo">
+                    <?php else: ?>
+                        <i class="fas fa-building"></i>
+                    <?php endif; ?>
                 </div>
 
-                <div class="accordion-item" onclick="toggleAcc(this)">
-                    <div class="accordion-header">
-                        <i class="fas fa-align-left acc-icon ic-blu"></i>
-                        <span class="acc-title">Deskripsi Perusahaan</span>
-                        <i class="fas fa-chevron-down acc-arrow"></i>
+                <div>
+                    <div class="job-title-text">
+                        <?= $nama_pt ?> 
                     </div>
-                    <div class="accordion-body">
-                        <?php echo nl2br(htmlspecialchars($deskripsi)); ?>
+                    
+                    <div class="job-meta-text">
+                        <span><i class="far fa-envelope"></i> <?= $email ?></span>
+                        <span><i class="fas fa-phone-alt"></i> <?= $telepon ?></span>
                     </div>
-                </div>
 
-                <div class="accordion-item" onclick="toggleAcc(this)">
-                    <div class="accordion-header">
-                        <i class="fas fa-image acc-icon ic-gry"></i>
-                        <span class="acc-title">Logo</span>
-                        <i class="fas fa-chevron-down acc-arrow"></i>
-                    </div>
-                    <div class="accordion-body">
-                        <?php if(!empty($logo_url)): ?>
-                            <img src="<?php echo htmlspecialchars($logo_url); ?>" style="width: 100px; border-radius: 8px; border: 1px solid #eee; padding: 5px;">
-                        <?php else: ?>
-                            <span class="text-muted">Tidak ada logo.</span>
+                    <div class="tags-line">
+                        <div class="tag-pill blue">
+                            <i class="far fa-calendar-alt"></i> Gabung: <?= $waktu_gabung ?>
+                        </div>
+                        <?php if($npwp != '-'): ?>
+                        <div class="tag-pill">
+                            <i class="fas fa-file-invoice"></i> NPWP: <?= $npwp ?>
+                        </div>
                         <?php endif; ?>
                     </div>
                 </div>
-
-                <div class="accordion-item" onclick="toggleAcc(this)">
-                    <div class="accordion-header">
-                        <i class="fas fa-envelope acc-icon ic-gry"></i>
-                        <span class="acc-title">Email</span>
-                        <i class="fas fa-chevron-down acc-arrow"></i>
-                    </div>
-                    <div class="accordion-body">
-                        <?php echo htmlspecialchars($email); ?>
-                    </div>
-                </div>
-
-                <div class="accordion-item" onclick="toggleAcc(this)">
-                    <div class="accordion-header">
-                        <i class="fas fa-bullseye acc-icon ic-gry"></i>
-                        <span class="acc-title">Visi & Misi</span>
-                        <i class="fas fa-chevron-down acc-arrow"></i>
-                    </div>
-                    <div class="accordion-body">
-                        <?php echo nl2br(htmlspecialchars($visi_misi)); ?>
-                    </div>
-                </div>
-
-                <div class="accordion-item" onclick="toggleAcc(this)">
-                    <div class="accordion-header">
-                        <i class="fas fa-sitemap acc-icon ic-gry"></i>
-                        <span class="acc-title">Struktur Organisasi</span>
-                        <i class="fas fa-chevron-down acc-arrow"></i>
-                    </div>
-                    <div class="accordion-body">
-                        <?php echo nl2br(htmlspecialchars($struktur)); ?>
-                    </div>
-                </div>
-
-                <div class="accordion-item" onclick="toggleAcc(this)">
-                    <div class="accordion-header">
-                        <i class="fas fa-book acc-icon ic-gry"></i>
-                        <span class="acc-title">Kebijakan SM</span>
-                        <i class="fas fa-chevron-down acc-arrow"></i>
-                    </div>
-                    <div class="accordion-body">
-                        <?php echo nl2br(htmlspecialchars($kebijakan)); ?>
-                    </div>
-                </div>
-
-                <div class="accordion-item" onclick="toggleAcc(this)">
-                    <div class="accordion-header">
-                        <i class="fas fa-network-wired acc-icon ic-gry"></i>
-                        <span class="acc-title">Anak Perusahaan</span>
-                        <i class="fas fa-chevron-down acc-arrow"></i>
-                    </div>
-                    <div class="accordion-body">
-                        <?php echo nl2br(htmlspecialchars($anak_perusahaan)); ?>
-                    </div>
-                </div>
-
             </div>
 
-            <div class="col-lg-5">
-                <div class="analysis-card">
-                    <div class="analysis-title">Analisis Perusahaan</div>
-                    
-                    <div class="check-item">
-                        <div class="check-val"><i class="fas fa-check-circle"></i> Info perusahaan lengkap</div>
-                    </div>
+            <div class="action-group">
+                <?php 
+                    $stClass = 'st-wait'; $stLabel = 'MENUNGGU VERIFIKASI';
+                    if($status == 'disetujui' || $status == 'aktif') { $stClass = 'st-active'; $stLabel = 'DISETUJUI / AKTIF'; }
+                    if($status == 'ditolak') { $stClass = 'st-reject'; $stLabel = 'DITOLAK'; }
+                ?>
+                <div class="status-badge <?= $stClass ?>"><?= $stLabel ?></div>
 
-                    <div class="check-item">
-                        <div class="check-label">Penyedia Lowongan</div>
-                        <div class="check-val"><i class="fas fa-check-circle"></i> Terpercaya</div>
-                    </div>
+                <?php if ($status == 'menunggu' || $status == 'pending'): ?>
+                    <a href="verifikasi.php?action=acc&id=<?= $id_perusahaan ?>" class="btn-action btn-acc" onclick="return confirm('Terima & Verifikasi Perusahaan ini?')">
+                        <i class="fas fa-check"></i> Terima
+                    </a>
+                    <a href="verifikasi.php?action=tolak&id=<?= $id_perusahaan ?>" class="btn-action btn-reject" onclick="return confirm('Tolak Perusahaan ini?')">
+                        <i class="fas fa-times"></i> Tolak
+                    </a>
+                
+                <?php elseif ($status == 'disetujui' || $status == 'aktif'): ?>
+                    <a href="verifikasi.php?action=tolak&id=<?= $id_perusahaan ?>" class="btn-action btn-reject" onclick="return confirm('Batalkan Verifikasi / Blokir Perusahaan?')">
+                        <i class="fas fa-ban"></i> Blokir / Batalkan
+                    </a>
 
-                    <div class="check-item">
-                        <div class="check-label">Rating Perusahaan</div>
-                        <div class="rating-box"><i class="fas fa-star"></i> <?php echo $rating; ?></div>
-                    </div>
-                </div>
-
-                <a href="hapus_perusahaan.php?id=<?php echo $id_perusahaan; ?>" 
-                   class="btn-delete-full"
-                   onclick="return confirm('⚠️ Hapus perusahaan ini secara permanen?');">
-                    Hapus Perusahaan <i class="fas fa-trash-alt ms-2"></i>
-                </a>
+                <?php elseif ($status == 'ditolak'): ?>
+                    <a href="verifikasi.php?action=acc&id=<?= $id_perusahaan ?>" class="btn-action btn-acc" onclick="return confirm('Pulihkan & Verifikasi?')">
+                        <i class="fas fa-redo"></i> Pulihkan
+                    </a>
+                <?php endif; ?>
+                
+                <a href="data_perusahaan.php" style="font-size:12px; color:#777; margin-top:5px; text-decoration:none;">&larr; Kembali ke Daftar</a>
             </div>
 
         </div>
+
+        <div class="address-section">
+            <div class="address-header">
+                <i class="fas fa-map-marker-alt icon-orange"></i> Alamat Lengkap
+            </div>
+            <div class="address-text">
+                <?= $alamat ?>
+            </div>
+        </div>
+
+        <hr>
+
+        <div class="row">
+            <div class="col-md-8">
+                <div class="desc-header">Tentang Perusahaan</div>
+                <div class="desc-text">
+                    <?= $deskripsi ?>
+                </div>
+
+                <?php if($visi_misi != '-'): ?>
+                <div class="desc-header">Visi & Misi</div>
+                <div class="desc-text">
+                    <?= $visi_misi ?>
+                </div>
+                <?php endif; ?>
+
+                <?php if($website != '#' && $website != ''): ?>
+                <div class="desc-header">Website</div>
+                <div class="desc-text">
+                    <a href="<?= $website ?>" target="_blank" style="color:#003399; text-decoration:underline;">
+                        <?= $website ?> <i class="fas fa-external-link-alt" style="font-size:12px;"></i>
+                    </a>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
     </div>
 </div>
 
-<script>
-    // FUNGSI UNTUK MEMBUKA/MENUTUP KONTEN
-    function toggleAcc(element) {
-        // Tambah/Hapus class 'active' saat diklik
-        element.classList.toggle("active");
-    }
-</script>
-
-<?php include 'footer.php'; ?>
+<?php require_once 'footer.php'; ?>

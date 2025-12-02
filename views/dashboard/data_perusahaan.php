@@ -1,5 +1,5 @@
 <?php
-// --- 1. SETUP KONEKSI (SESUAI KODE KAMU) ---
+// --- 1. SETUP KONEKSI ---
 require __DIR__ . '/../../vendor/autoload.php';
 use GuzzleHttp\Client;
 
@@ -19,7 +19,7 @@ try {
         'http_errors' => false
     ]);
 
-    // QUERY DIPERBAIKI: Hanya ambil perusahaan dengan status 'disetujui'
+    // QUERY: Hanya ambil perusahaan dengan status 'disetujui'
     $queryUrl = 'perusahaan?select=*,lowongan(count)&status_persetujuan=eq.disetujui&order=id_perusahaan.desc';
     
     if (!empty($keyword)) {
@@ -40,7 +40,16 @@ include 'topbar.php';
 
 <style>
   /* --- LAYOUT UTAMA --- */
-  body { background-color: #F4F7FE; font-family: 'Inter', sans-serif; }
+  body { 
+      /* PERUBAHAN DI SINI: BACKGROUND IMAGE */
+      background-image: url('backgroundamin.png');
+      background-size: cover;       /* Agar gambar memenuhi layar */
+      background-position: center;  /* Posisi gambar di tengah */
+      background-repeat: no-repeat; /* Jangan diulang-ulang */
+      background-attachment: fixed; /* Background tetap saat discroll */
+      
+      font-family: 'Inter', sans-serif; 
+  }
   
   .main-content { 
       margin-top: 55px !important; 
@@ -56,6 +65,8 @@ include 'topbar.php';
       margin-top: 0px !important; padding-top: 0px !important;
       line-height: 1 !important; transform: translateY(-15px); 
       margin-bottom: 20px;
+      /* Tambahan shadow text biar terbaca jika background gelap */
+      text-shadow: 1px 1px 2px rgba(255,255,255,0.8);
   }
 
   /* --- TOOLBAR --- */
@@ -116,9 +127,6 @@ include 'topbar.php';
       width: 140px; flex-shrink: 0; font-size: 13px; color: #A3AED0; 
   }
   
-  /* KOLOM 4: STATUS (DIHAPUS VISUALNYA TAPI CLASS TETAP DISIMPAN JIKA PERLU NANTI) */
-  .lc-status { display: none; } 
-
   /* KOLOM 5: DETAIL */
   .lc-action { 
       width: 100px; flex-shrink: 0; text-align: center; display: flex; justify-content: center;
@@ -172,7 +180,7 @@ include 'topbar.php';
     <div class="row">
         <div class="col-lg-9">
             <?php if (empty($list_data)): ?>
-                <div class="text-center py-5 text-muted">
+                <div class="text-center py-5 text-muted" style="background:white; border-radius:12px;">
                     <p>Tidak ada data perusahaan.</p>
                 </div>
             <?php else: ?>
@@ -182,7 +190,6 @@ include 'topbar.php';
                     $nama = $row['nama_perusahaan'];
                     $jml_loker = $row['lowongan'][0]['count'] ?? 0;
                     
-                    // PERBAIKAN: Gunakan 'dibuat_pada' bukan 'created_at'
                     if (!empty($row['dibuat_pada'])) {
                         $tgl_gabung = date('d M Y', strtotime($row['dibuat_pada']));
                     } else {

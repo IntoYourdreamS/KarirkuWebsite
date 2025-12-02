@@ -20,7 +20,7 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
     }
 }
 
-// --- QUERY SEMUA DATA TANPA FILTER ---
+// --- QUERY SEMUA DATA ---
 $all_result = supabaseQuery('perusahaan', [
     'select' => '*',
     'order' => 'dibuat_pada.desc'
@@ -29,7 +29,6 @@ $all_result = supabaseQuery('perusahaan', [
 // --- PROSES DATA ---
 $all_companies = $all_result['success'] ? $all_result['data'] : [];
 
-// Pisahkan data berdasarkan status secara manual di PHP
 $list_pending = [];
 $list_accepted = [];
 $list_rejected = [];
@@ -60,13 +59,24 @@ foreach ($list_pending as $row) {
     }
 }
 
-// Setup untuk sidebar
 $activePage = 'verifikasi';
-$count_pending_perusahaan = count($list_pending);
-
 include 'header.php';
 include 'sidebar.php';
 include 'topbar.php';
+
+function time_elapsed_string($datetime, $full = false) {
+    $now = new DateTime;
+    $ago = new DateTime($datetime);
+    $diff = $now->diff($ago);
+    $diff->w = floor($diff->d / 7);
+    $diff->d -= $diff->w * 7;
+    $string = array('y' => 'thn', 'm' => 'bln', 'w' => 'mgg', 'd' => 'hari', 'h' => 'jam', 'i' => 'mnt', 's' => 'dtk');
+    foreach ($string as $k => &$v) {
+        if ($diff->$k) $v = $diff->$k . ' ' . $v; else unset($string[$k]);
+    }
+    if (!$full) $string = array_slice($string, 0, 1);
+    return $string ? implode(', ', $string) . ' lalu' : 'Baru saja';
+}
 ?>
 
 <!DOCTYPE html>
@@ -76,457 +86,333 @@ include 'topbar.php';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verifikasi Perusahaan</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         /* --- LAYOUT UTAMA --- */
-        body {
-            background-color: #F7F8FC !important;
-            font-family: 'Inter', sans-serif !important;
-            margin: 0;
-            padding: 0;
+        body { 
+            background-color: #F7F8FC !important; 
+            font-family: 'Inter', sans-serif !important; 
+            margin: 0; 
+            padding: 0; 
         }
 
         .main-content {
             background-color: #F7F8FC;
             min-height: 100vh;
-            margin-top: 70px !important;
+            /* Margin top 70px karena tinggi topbar biasanya 70px */
+            margin-top: 70px !important; 
             margin-left: 240px !important;
-            padding: 0px 30px 30px 30px !important;
-            transition: all 0.3s;
+            /* Padding atas 10px supaya judul langsung terlihat tapi tidak nempel border browser */
+            padding: 10px 30px 30px 30px !important;
             box-sizing: border-box;
+            height: 100vh; 
+            display: flex;
+            flex-direction: column;
         }
 
         @media (max-width: 992px) {
-            .main-content {
-                margin-left: 0 !important;
-                padding: 0px 15px 15px 15px !important;
+            .main-content { 
+                margin-left: 0 !important; 
+                padding: 15px !important; 
+                height: auto; 
             }
         }
 
-        /* HEADER */
-        .page-title {
+        /* JUDUL HALAMAN (DIPERBAIKI: Margin 0 agar mepet ke atas) */
+        .page-title-custom {
+            margin-top: 0 !important; 
+            padding-top: 0 !important;
+            margin-bottom: 20px; 
+            /* Warna Biru sesuai request */
+            color: #2B3674; 
             font-weight: 700;
-            color: #1e40af;
             font-size: 20px;
-            margin: 0 !important;
-            padding: 20px 0 !important;
-            text-align: left;
+            /* Hapus transform negative yang bikin hilang */
+            position: relative;
         }
 
-        /* DEBUG INFO */
-        .debug-info {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
-            font-size: 14px;
-        }
-
-        .debug-info h5 {
-            margin: 0 0 10px 0;
-            color: #856404;
-        }
-
-        .debug-info ul {
-            margin: 0;
-            padding-left: 20px;
-        }
-
-        /* SPLIT GRID */
+        /* GRID SYSTEM */
         .split-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 25px;
-            align-items: start;
-            margin-top: 15px;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 30px;
+            align-items: stretch; 
+            height: calc(100vh - 120px);
+            min-height: 600px;
         }
 
         @media (max-width: 1200px) {
-            .split-grid {
-                grid-template-columns: 1fr;
+            .split-grid { 
+                grid-template-columns: 1fr; 
+                height: auto; 
+                display: block; 
             }
         }
 
-        /* CARD & TABLE */
-        .content-card {
+        .section-header {
+            font-size: 14px; 
+            font-weight: 700; 
+            color: #2B3674; 
+            text-align: center;
+            margin-bottom: 15px; 
+            padding-bottom: 10px; 
+            border-bottom: 1px solid #f1f5f9; 
+            text-transform: capitalize;
+        }
+
+        /* SCROLLBAR CUSTOM */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* --- LEFT COLUMN --- */
+        .main-card-container {
             background: white;
+            border: 1px solid #E0E5F2;
             border-radius: 12px;
-            border: 1px solid #EFEFEF;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
-            overflow: hidden;
-            margin-bottom: 25px;
-        }
-
-        .card-header-custom {
-            padding: 15px 20px;
-            border-bottom: 1px solid #F1F5F9;
+            padding: 20px 25px;
+            height: 100%; 
             display: flex;
-            justify-content: center;
-            align-items: center;
-            background-color: #F0F5FF;
+            flex-direction: column;
+            box-sizing: border-box;
         }
 
-        .card-title {
-            font-size: 15px;
-            font-weight: 700;
-            margin: 0;
-            color: #2563EB;
-            text-align: center;
-        }
-
-        .table-scroll {
-            max-height: 400px;
+        .scroll-area-lg {
+            flex: 1;
             overflow-y: auto;
+            padding-right: 5px;
         }
 
-        .custom-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .custom-table th {
-            background: #fff;
-            color: #64748B;
-            font-size: 11px;
-            text-transform: uppercase;
-            padding: 12px 15px;
-            text-align: center;
-            border-bottom: 1px solid #eee;
-            font-weight: 600;
-        }
-
-        .custom-table td {
-            padding: 12px 15px;
-            border-bottom: 1px solid #F8FAFC;
-            color: #334155;
-            font-size: 13px;
-            vertical-align: middle;
-            text-align: center;
-        }
-
-        .custom-table tr:last-child td {
-            border-bottom: none;
-        }
-
-        /* BUTTONS */
-        .btn-action-sm {
-            padding: 5px 10px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: 600;
-            text-decoration: none;
-            margin-left: 4px;
-            display: inline-block;
-            border: 1px solid transparent;
-            transition: all 0.2s;
-            cursor: pointer;
-        }
-
-        .btn-acc {
-            background: #DCFCE7;
-            color: #166534;
-        }
-
-        .btn-acc:hover {
-            background: #166534;
-            color: white;
-        }
-
-        .btn-rej {
-            background: #FEE2E2;
-            color: #991B1B;
-        }
-
-        .btn-rej:hover {
-            background: #991B1B;
-            color: white;
-        }
-
-        .btn-eye {
-            background: #F1F5F9;
-            color: #475569;
-        }
-
-        .btn-eye:hover {
-            background: #cbd5e1;
-        }
-
+        /* --- RIGHT COLUMN --- */
         .right-stack {
             display: flex;
             flex-direction: column;
             gap: 25px;
+            height: 100%;
         }
 
-        /* STATUS BADGES */
-        .status-badge {
-            padding: 3px 8px;
-            border-radius: 6px;
-            font-size: 10px;
-            font-weight: 600;
-            display: inline-block;
+        .right-section-box {
+            background: white;
+            border: 1px solid #E0E5F2;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
         }
 
-        .status-pending {
-            background: #FEF3C7;
-            color: #92400E;
+        .scroll-area-sm {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 5px;
         }
 
-        .status-overdue {
-            background: #FEE2E2;
-            color: #991B1B;
+        /* CARD ITEMS */
+        .item-card {
+            background: #fff; 
+            border: 1px solid #E0E5F2; 
+            border-radius: 12px;
+            padding: 20px; 
+            margin-bottom: 15px; 
+            display: flex; 
+            justify-content: space-between;
+            align-items: center; 
+            transition: all 0.2s; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        
+        .item-card:hover { 
+            border-color: #5967FF; 
+            background-color: #F8F9FF;
+            box-shadow: 0 4px 6px rgba(89, 103, 255, 0.1); 
+        }
+        
+        .item-info h5 { 
+            margin: 0 0 5px 0; 
+            font-size: 16px; 
+            font-weight: 700; 
+            color: #2B3674; 
+        }
+        
+        .item-info span { 
+            font-size: 12px; 
+            color: #A3AED0; 
         }
 
-        .status-accepted {
-            background: #DCFCE7;
-            color: #166534;
+        /* BUTTONS & BADGES */
+        .btn-group-custom { 
+            display: flex; 
+            gap: 8px; 
+            align-items: center; 
         }
-
-        .status-rejected {
-            background: #FEE2E2;
-            color: #991B1B;
+        
+        .btn-custom { 
+            padding: 8px 20px; 
+            border-radius: 8px; 
+            font-size: 12px; 
+            font-weight: 600; 
+            text-decoration: none; 
+            display: inline-block; 
+            transition: background 0.2s; 
+            border: 1px solid transparent; 
+            text-align: center; 
+            cursor: pointer;
         }
-
-        /* TEXT UTILITIES */
-        .text-center {
-            text-align: center;
+        
+        /* TOMBOL DETAIL WARNA BIRU GELAP */
+        .btn-detail { 
+            background-color: #11047A; 
+            color: white; 
+        } 
+        
+        .btn-detail:hover { 
+            background-color: #0d035e; 
+            transform: translateY(-2px);
         }
-
-        .text-muted {
-            color: #6c757d;
+        
+        .mini-card { 
+            background: #fff; 
+            border: 1px solid #E2E8F0; 
+            border-radius: 8px; 
+            padding: 12px 15px; 
+            margin-bottom: 12px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
         }
-
-        .small {
-            font-size: 0.875em;
+        
+        .mini-card.success { border: 1px solid #86efac; } 
+        .mini-card.danger { border: 1px solid #fca5a5; } 
+        .mini-card.warning { border: 1px solid #fcd34d; }
+        
+        .mini-info h6 { 
+            margin: 0; 
+            font-size: 14px; 
+            font-weight: 600; 
+            color: #2B3674; 
+        } 
+        
+        .mini-info small { 
+            font-size: 11px; 
+            color: #A3AED0; 
         }
-
-        .fw-bold {
-            font-weight: bold;
+        
+        .status-pill { 
+            padding: 4px 10px; 
+            border-radius: 20px; 
+            font-size: 10px; 
+            font-weight: 600; 
+            text-transform: uppercase; 
         }
-
-        .py-3 {
-            padding-top: 1rem;
-            padding-bottom: 1rem;
-        }
-
-        .py-5 {
-            padding-top: 3rem;
-            padding-bottom: 3rem;
-        }
-
-        .mb-2 {
-            margin-bottom: 0.5rem;
-        }
-
-        .me-2 {
-            margin-right: 0.5rem;
-        }
-
-        .opacity-25 {
-            opacity: 0.25;
+        
+        .pill-success { background: #DCFCE7; color: #166534; } 
+        .pill-danger { background: #FEE2E2; color: #991B1B; }
+        
+        .empty-state { 
+            text-align: center; 
+            color: #cbd5e1; 
+            padding: 20px 0; 
+            font-size: 14px; 
+            font-weight: 500; 
+            margin: auto; 
         }
     </style>
 </head>
 
 <body>
     <div class="main-content">
-        <h4 class="page-title">Verifikasi Perusahaan</h4>
-
-        <!-- Debug Info -->
-        <div class="debug-info">
-            <h5>🔍 Debug Information - Manual Filter</h5>
-            <ul>
-                <li>Total Semua Perusahaan: <?= count($all_companies) ?></li>
-                <li>Status Menunggu: <?= count($list_pending) ?></li>
-                <li>Status Diterima: <?= count($list_accepted) ?></li>
-                <li>Status Ditolak: <?= count($list_rejected) ?></li>
-                <li>Overdue: <?= count($list_overdue) ?></li>
-            </ul>
-            <?php if (!empty($all_companies)): ?>
-                <p><strong>Contoh status dari data pertama:</strong> "<?= $all_companies[0]['status_persetujuan'] ?? 'tidak ada' ?>"</p>
-            <?php endif; ?>
-        </div>
+        <h4 class="page-title-custom">Verifikasi Perusahaan</h4>
 
         <div class="split-grid">
 
-            <!-- KOLOM KIRI: Permintaan Bergabung -->
-            <div class="left-col">
-                <div class="content-card">
-                    <div class="card-header-custom">
-                        <h5 class="card-title">Permintaan Bergabung (<?= count($list_pending) ?>)</h5>
-                    </div>
-                    <div class="table-scroll">
-                        <table class="custom-table">
-                            <thead>
-                                <tr>
-                                    <th>Perusahaan</th>
-                                    <th>Tanggal</th>
-                                    <th>Status</th>
-                                    <th>Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php if (empty($list_pending)): ?>
-                                    <tr>
-                                        <td colspan="4" class="text-center py-5 text-muted small">
-                                            <i class="fas fa-inbox fa-2x mb-2 opacity-25"></i><br>
-                                            Tidak ada permintaan bergabung.
-                                        </td>
-                                    </tr>
-                                <?php else: ?>
-                                    <?php foreach ($list_pending as $row):
-                                        $is_overdue = in_array($row, $list_overdue);
-                                        $tgl_daftar = !empty($row['dibuat_pada']) ? date('d M Y', strtotime($row['dibuat_pada'])) : '-';
-                                    ?>
-                                        <tr>
-                                            <td>
-                                                <div class="fw-bold text-dark"><?= htmlspecialchars($row['nama_perusahaan']) ?></div>
-                                                <small class="text-muted"><?= substr($row['deskripsi'] ?? 'Tidak ada deskripsi', 0, 35) ?>...</small>
-                                            </td>
-                                            <td class="text-muted small">
-                                                <?= $tgl_daftar ?>
-                                            </td>
-                                            <td>
-                                                <?php if ($is_overdue): ?>
-                                                    <span class="status-badge status-overdue">Overdue</span>
-                                                <?php else: ?>
-                                                    <span class="status-badge status-pending">Menunggu</span>
-                                                <?php endif; ?>
-                                            </td>
-                                            <td>
-                                                <a href="detail_perusahaan.php?id=<?= $row['id_perusahaan'] ?>" class="btn-action-sm btn-eye" title="Detail">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                                <a href="verifikasi.php?action=acc&id=<?= $row['id_perusahaan'] ?>" class="btn-action-sm btn-acc"
-                                                    onclick="return confirm('Terima perusahaan <?= htmlspecialchars($row['nama_perusahaan']) ?>?')" title="Terima">
-                                                    ACC
-                                                </a>
-                                                <a href="verifikasi.php?action=tolak&id=<?= $row['id_perusahaan'] ?>" class="btn-action-sm btn-rej"
-                                                    onclick="return confirm('Tolak perusahaan <?= htmlspecialchars($row['nama_perusahaan']) ?>?')" title="Tolak">
-                                                    X
-                                                </a>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
+            <div class="main-card-container">
+                <div class="section-header">
+                    Permintaan Bergabung <span style="color:#ef4444">•</span>
+                </div>
+
+                <div class="scroll-area-lg">
+                    <?php if (empty($list_pending)): ?>
+                        <div class="empty-state">Tidak ada permintaan baru</div>
+                    <?php else: ?>
+                        <?php foreach ($list_pending as $row): 
+                            $time_ago = !empty($row['dibuat_pada']) ? time_elapsed_string($row['dibuat_pada']) : '-';
+                        ?>
+                        <div class="item-card">
+                            <div class="item-info">
+                                <h5><?= htmlspecialchars($row['nama_perusahaan']) ?></h5>
+                                <span><?= $time_ago ?></span>
+                            </div>
+                            <div class="btn-group-custom">
+                                <a href="detail_perusahaan.php?id=<?= $row['id_perusahaan'] ?>" class="btn-custom btn-detail">
+                                    Detail
+                                </a>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </div>
             </div>
 
-            <!-- KOLOM KANAN: Stack Vertikal -->
             <div class="right-stack">
 
-                <!-- Permintaan Diterima -->
-                <div class="content-card">
-                    <div class="card-header-custom">
-                        <h5 class="card-title">Permintaan Diterima (<?= count($list_accepted) ?>)</h5>
-                    </div>
-                    <div class="table-scroll" style="max-height: 200px;">
-                        <table class="custom-table">
-                            <tbody>
-                                <?php if (empty($list_accepted)): ?>
-                                    <tr>
-                                        <td class="text-center py-3 text-muted small">
-                                            Belum ada perusahaan yang diterima.
-                                        </td>
-                                    </tr>
-                                <?php else: ?>
-                                    <?php foreach ($list_accepted as $row):
-                                        $tgl_daftar = !empty($row['dibuat_pada']) ? date('d/m/y', strtotime($row['dibuat_pada'])) : '-';
-                                    ?>
-                                        <tr>
-                                            <td>
-                                                <i class="fas fa-check-circle text-success me-2"></i>
-                                                <strong><?= htmlspecialchars($row['nama_perusahaan']) ?></strong>
-                                            </td>
-                                            <td class="text-muted small">
-                                                <?= $tgl_daftar ?>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
+                <div class="right-section-box">
+                    <div class="section-header">Permintaan Diterima</div>
+                    <div class="scroll-area-sm">
+                        <?php if (empty($list_accepted)): ?>
+                            <div class="empty-state">Belum ada data</div>
+                        <?php else: ?>
+                            <?php foreach ($list_accepted as $row): ?>
+                            <div class="mini-card success">
+                                <div class="mini-info">
+                                    <h6><?= htmlspecialchars($row['nama_perusahaan']) ?></h6>
+                                    <small>Disetujui</small>
+                                </div>
+                                <span class="status-pill pill-success">Aktif</span>
+                            </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </div>
                 </div>
 
-                <!-- Permintaan Ditolak -->
-                <div class="content-card">
-                    <div class="card-header-custom">
-                        <h5 class="card-title">Permintaan Ditolak (<?= count($list_rejected) ?>)</h5>
-                    </div>
-                    <div class="table-scroll" style="max-height: 200px;">
-                        <table class="custom-table">
-                            <tbody>
-                                <?php if (empty($list_rejected)): ?>
-                                    <tr>
-                                        <td class="text-center py-3 text-muted small">
-                                            Belum ada perusahaan yang ditolak.
-                                        </td>
-                                    </tr>
-                                <?php else: ?>
-                                    <?php foreach ($list_rejected as $row):
-                                        $tgl_daftar = !empty($row['dibuat_pada']) ? date('d/m/y', strtotime($row['dibuat_pada'])) : '-';
-                                    ?>
-                                        <tr>
-                                            <td>
-                                                <i class="fas fa-times-circle text-danger me-2"></i>
-                                                <strong><?= htmlspecialchars($row['nama_perusahaan']) ?></strong>
-                                            </td>
-                                            <td class="text-muted small">
-                                                <?= $tgl_daftar ?>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
+                <div class="right-section-box">
+                    <div class="section-header">Permintaan Ditolak</div>
+                    <div class="scroll-area-sm">
+                        <?php if (empty($list_rejected)): ?>
+                            <div class="empty-state">Belum ada data</div>
+                        <?php else: ?>
+                            <?php foreach ($list_rejected as $row): ?>
+                            <div class="mini-card danger">
+                                <div class="mini-info">
+                                    <h6><?= htmlspecialchars($row['nama_perusahaan']) ?></h6>
+                                    <small>Ditolak</small>
+                                </div>
+                                <span class="status-pill pill-danger">Ditolak</span>
+                            </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </div>
                 </div>
 
-                <!-- Lewat > 5 Hari -->
-                <div class="content-card">
-                    <div class="card-header-custom">
-                        <h5 class="card-title">Lewat > 5 Hari (<?= count($list_overdue) ?>)</h5>
-                    </div>
-                    <div class="table-scroll" style="max-height: 250px;">
-                        <table class="custom-table">
-                            <thead>
-                                <tr>
-                                    <th>Perusahaan</th>
-                                    <th>Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php if (empty($list_overdue)): ?>
-                                    <tr>
-                                        <td colspan="2" class="text-center py-3 text-muted small">
-                                            Tidak ada permintaan overdue.
-                                        </td>
-                                    </tr>
-                                <?php else: ?>
-                                    <?php foreach ($list_overdue as $row): ?>
-                                        <tr>
-                                            <td>
-                                                <div class="fw-bold"><?= htmlspecialchars($row['nama_perusahaan']) ?></div>
-                                                <small class="text-danger">
-                                                    <i class="far fa-clock"></i> Telat Verifikasi
-                                                </small>
-                                            </td>
-                                            <td>
-                                                <a href="verifikasi.php?action=acc&id=<?= $row['id_perusahaan'] ?>"
-                                                    class="btn-action-sm btn-acc"
-                                                    onclick="return confirm('Terima perusahaan <?= htmlspecialchars($row['nama_perusahaan']) ?>?')">
-                                                    ACC
-                                                </a>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
+                <div class="right-section-box">
+                    <div class="section-header" style="color: #C05621;">Lewat 5 Hari</div>
+                    <div class="scroll-area-sm">
+                        <?php if (empty($list_overdue)): ?>
+                            <div class="empty-state">Aman</div>
+                        <?php else: ?>
+                            <?php foreach ($list_overdue as $row): 
+                                $time_ago = !empty($row['dibuat_pada']) ? time_elapsed_string($row['dibuat_pada']) : '5 hari lalu';
+                            ?>
+                            <div class="mini-card warning">
+                                <div class="mini-info">
+                                    <h6><?= htmlspecialchars($row['nama_perusahaan']) ?></h6>
+                                    <small><?= $time_ago ?></small>
+                                </div>
+                                <a href="detail_perusahaan.php?id=<?= $row['id_perusahaan'] ?>" class="btn-custom btn-detail" style="padding: 4px 12px; font-size: 10px;">Detail</a>
+                            </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -536,5 +422,4 @@ include 'topbar.php';
 
     <?php include 'footer.php'; ?>
 </body>
-
 </html>
